@@ -66,7 +66,7 @@ screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Level Builder")
 
 # Load template image used for defining drawable area
-original_image = pygame.image.load("images/outline_template.png").convert_alpha()
+original_image = pygame.image.load("../assets/outline_template.png").convert_alpha()
 
 # Scale template image
 scale_factor = 4
