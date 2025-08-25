@@ -1,0 +1,42 @@
+import csv
+
+
+# Function to export path coordinates to csv file, adjusted for the offset
+# due to image position and boundary
+def export_path_coords_to_csv(coords, draw_image_x, draw_image_y, image_boundary):
+    shifted_coords = [
+        (t[0] - (draw_image_x + image_boundary), t[1] - (draw_image_y + image_boundary))
+        for t in coords
+    ]
+
+    with open("level_path_coordinates.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["X", "Y"])  # Write header row
+        writer.writerows(shifted_coords)
+
+
+# Function to export asset coordinates to csv file, adjusted for the offset
+# due to image position and boundary
+def export_asset_coords_to_csv(asset_defs, draw_image_x, draw_image_y, image_boundary):
+    # If location specified, adjust for offset
+    for asset in asset_defs:
+        if asset.get("location"):
+            asset["location"] = (
+                asset["location"][0] - (draw_image_x + image_boundary),
+                asset["location"][1] - (draw_image_y + image_boundary),
+            )
+
+    fieldnames = asset_defs[0].keys()
+    with open("level_asset_coordinates.csv", "w", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(asset_defs)
+
+
+# Funtion to draw maze grid to text file
+def export_maze_grid_to_txt(maze_grid):
+    f = open("level_grid.txt", "w")
+    for row in maze_grid:
+        row_str = ",".join(map(str, row))
+        f.write(row_str + "\n")
+    f.close()
