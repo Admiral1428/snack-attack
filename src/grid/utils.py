@@ -25,3 +25,13 @@ def invert_maze_to_grid(
             ] * block_width
 
     return maze_grid
+
+
+# Function to check how much much path space exists in total (area)
+def grid_space(maze_grid):
+    count = 0
+    for row in maze_grid:
+        for element in row:
+            if element == 0:
+                count += 1
+    return count
