@@ -33,6 +33,15 @@ def export_asset_coords_to_csv(asset_defs, draw_image_x, draw_image_y, image_bou
         writer.writerows(asset_defs)
 
 
+# Function to export dictionary containing metadata
+def export_metadata(maze_metadata):
+    fieldnames = maze_metadata.keys()
+    with open("level_metadata.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(maze_metadata.keys())
+        writer.writerow(maze_metadata.values())
+
+
 # Funtion to draw maze grid to text file
 def export_maze_grid_to_txt(maze_grid):
     f = open("level_grid.txt", "w")
