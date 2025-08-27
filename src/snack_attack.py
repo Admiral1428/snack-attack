@@ -92,7 +92,7 @@ for image in images:
 
 # Get levels and their supporting file paths
 level_dir = "../assets/levels/"
-levels = get_levels("../assets/levels/")
+levels = get_levels(level_dir)
 
 if not levels:
     print(f"Could not load any level folders at {level_dir}")
@@ -106,6 +106,8 @@ pygame.display.update()
 maze_draw = True
 draw_asset_starts = False
 rungame = False
+paused = False
+need_pause_text = False
 running = True
 while running:
     for event in pygame.event.get():
@@ -114,6 +116,9 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_s:
                 s_pressed = True
+            if event.key == pygame.K_PAUSE:
+                paused = not paused
+                need_pause_text = True
         elif event.type == pygame.KEYUP:
             if event.key == pygame.K_s and s_pressed:
                 # Skip to next level
@@ -152,8 +157,10 @@ while running:
             screen,
         )
 
-        # List of dirty rectangles, representing areas of screen to be updated
-        dirty_rects = []
+        # Save subsurface for game loop re-draw 
+        rect_area = pygame.Rect(0, 0, width, height)
+        temp_surf = screen.subsurface(rect_area)
+        area_surf = temp_surf.copy()
 
         # Save relevant metadata
         level_speed = maze_metadata.get("level_speed")
@@ -207,23 +214,26 @@ while running:
             )
             player.move(start_to_respawn, maze_grid)
         display_rect = player.draw(draw_image_x, draw_image_y, image_boundary, screen)
-        dirty_rects.append(display_rect)
-        pygame.display.update(dirty_rects)
+        pygame.display.flip()
         draw_asset_starts = False
         rungame = True
-    elif rungame:
+    elif rungame and not paused:
+        # Clear screen and re-draw background
+        screen.fill(black)
+        screen.blit(area_surf, (0, 0))
+
         # Player movement input
         keys = pygame.key.get_pressed()
         if keys[pygame.K_l]:
-            player.set_direction(1, 0)  # right
+            player.set_direction(1, 0, maze_grid)  # right
         elif keys[pygame.K_j]:
-            player.set_direction(-1, 0)  # left
+            player.set_direction(-1, 0, maze_grid)  # left
         elif keys[pygame.K_i]:
-            player.set_direction(0, -1)  # up
+            player.set_direction(0, -1, maze_grid)  # up
         elif keys[pygame.K_k]:
-            player.set_direction(0, 1)  # down
+            player.set_direction(0, 1, maze_grid)  # down
         elif keys[pygame.K_SPACE]:
-            player.set_direction(0, 0)  # stop
+            player.set_direction(0, 0, maze_grid)  # stop
 
         # Delays to achieve level speed
         if level_speed == "slow":
@@ -235,16 +245,18 @@ while running:
         elif level_speed == "frantic":
             time.sleep(0.002)
 
-        # Draw over previous location, Move player, draw sprite, and append dirty rects for screen cleanup
-        pygame.draw.rect(screen, black, dirty_rects[0])
+        # Move player, draw sprite
         player.perform_move(maze_grid)
-        display_rect = player.draw(draw_image_x, draw_image_y, image_boundary, screen)
-        dirty_rects.append(display_rect)
+        player.draw(draw_image_x, draw_image_y, image_boundary, screen)
 
-        # Clean up dirty rects and pop first element
-        pygame.display.update(dirty_rects)
-        dirty_rects.pop(0)
-
+        # Update screen
+        pygame.display.flip()
+    elif paused:
+        if need_pause_text:
+            text_surface = font.render("Game paused. Press Pause button to resume.", True, white)
+            screen.blit(text_surface, (500, 850))
+            pygame.display.flip()
+            need_pause_text = False
 
 # Quit
 pygame.quit()
