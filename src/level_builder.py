@@ -1,15 +1,17 @@
 import os
 import pygame
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from rect.utils import define_rect, shift_rect_to_divisible_pos
 from rect.draw import draw_square, draw_asset
 from grid.utils import invert_maze_to_grid, grid_space
+from fileio.load import import_image_dir
 from fileio.export import (
     export_path_coords_to_csv,
     export_asset_coords_to_csv,
     export_maze_grid_to_txt,
     export_metadata,
+    move_files,
 )
 from path.utils import (
     rect_within_boundary,
@@ -98,7 +100,6 @@ text_strings = [
     "W to cycle wall color",
     "A to end maze and place assets",
     "P to save screenshot",
-    "C to export maze to file",
     "F to cycle level speed:",
     "",
     "J to cycle # corn enemies",
@@ -106,11 +107,11 @@ text_strings = [
     "L to cycle # pumpkin enemies",
 ]
 for row, text_line in enumerate(text_strings):
-    if row <= 7:
+    if row <= 6:
         selected_color = black
-    elif row == 8:
+    elif row == 7:
         selected_color = dkgreen
-    elif row == 9:
+    elif row == 8:
         selected_color = red
     else:
         selected_color = orange
@@ -127,39 +128,26 @@ tomato_index = 0
 pumpkin_index = 0
 
 # Load enemy images and scale them
-corn_image = pygame.image.load("../assets/sprites/corn.png").convert_alpha()
-tomato_image = pygame.image.load("../assets/sprites/tomato.png").convert_alpha()
-pumpkin_image = pygame.image.load("../assets/sprites/pumpkin.png").convert_alpha()
-corn_image = pygame.transform.scale(
-    corn_image,
+images = import_image_dir("../assets/sprites/")
+for image in images:
+    images[image] = pygame.transform.scale(images[image],
     (
-        int(corn_image.get_width() * scale_factor),
-        int(corn_image.get_height() * scale_factor),
+        int(images[image].get_width() * scale_factor),
+        int(images[image].get_height() * scale_factor),
     ),
 )
-tomato_image = pygame.transform.scale(
-    tomato_image,
-    (
-        int(tomato_image.get_width() * scale_factor),
-        int(tomato_image.get_height() * scale_factor),
-    ),
-)
-pumpkin_image = pygame.transform.scale(
-    pumpkin_image,
-    (
-        int(pumpkin_image.get_width() * scale_factor),
-        int(pumpkin_image.get_height() * scale_factor),
-    ),
-)
+corn_image = images["corn"]
+tomato_image = images["tomato"]
+pumpkin_image = images["pumpkin"]
 
-# Initialize level speed (slow, medium, fast)
-level_speeds = ["slow", "medium", "fast"]
+# Initialize level speed (slow, medium, fast, frantic)
+level_speeds = ["slow", "medium", "fast", "frantic"]
 level_speed_index = 0
 
 # Display level speed in blue color
 # Display new number
 text_surface = font.render(str(level_speeds[level_speed_index]), True, blue)
-screen.blit(text_surface, (1450, 400))
+screen.blit(text_surface, (1450, 350))
 
 # Display enemy images
 screen.blit(corn_image, (1150, 700))
@@ -216,46 +204,63 @@ while running:
                     maze_height + 2 * image_boundary,
                 )
                 sub_surface = screen.subsurface(screenshot_rect)
-                pygame.image.save(sub_surface, "level_screenshot.png")
-                print("Screenshot saved as level_screenshot.png")
-            elif event.key == pygame.K_c:
-                # Warning to user that final export will need assets
                 if maze_draw:
-                     messagebox.showinfo("Warning", "Ensure all assets are placed before final export! Click OK then click back onto Level Builder window.")
-                # Export path coordinates to csv
-                export_path_coords_to_csv(
-                    chosen_coords, draw_image_x, draw_image_y, image_boundary
-                )
-                print("Level coordinates saved as level_path_coordinates.csv")
-                # Export asset coordinates to csv if applicable
-                if asset_defs:
-                    export_asset_coords_to_csv(
-                        asset_defs, draw_image_x, draw_image_y, image_boundary
+                    screenshot_name = "level_screenshot_no_assets.png"
+                else:
+                    screenshot_name = "level_screenshot.png"
+                pygame.image.save(sub_surface, screenshot_name)
+                print(f"Screenshot saved as {screenshot_name}")
+            elif event.key == pygame.K_c and not maze_draw:
+                # Warning to user that final export will need all assets
+                if len(asset_coords) < 8:
+                     messagebox.showinfo("Warning", "Ensure all assets are placed before final export!\n\n" \
+                     "If there is insufficient space, it may be necessary to exit and restart the drawing.\n\n" \
+                     "Click OK then click back onto Level Builder window.")
+                else:
+                    # Export path coordinates to csv
+                    export_path_coords_to_csv(
+                        chosen_coords, draw_image_x, draw_image_y, image_boundary
                     )
-                    print("Asset coordinates saved as level_asset_coordinates.csv")
-                # Export maze metadata to csv
-                # Maze metadata
-                maze_metadata = {
-                    "maze_color": maze_colors[maze_color_index],
-                    "level_speed": level_speeds[level_speed_index],
-                    "corn_quantity": corn_quantities[corn_index],
-                    "tomato_quantity": tomato_quantities[tomato_index],
-                    "pumpkin_quantity": pumpkin_quantities[pumpkin_index],
-                }
-                export_metadata(maze_metadata)
-                print("Maze metadata saved as level_metadata.csv")
-                # Create maze grid and export to text file
-                my_maze = invert_maze_to_grid(
-                    chosen_coords,
-                    maze_width,
-                    maze_height,
-                    draw_image_x,
-                    draw_image_y,
-                    image_boundary,
-                    block_width,
-                )
-                export_maze_grid_to_txt(my_maze)
-                print("Level grid saved as level_grid.txt")
+                    print("Level coordinates saved as level_path_coordinates.csv")
+                    # Export asset coordinates to csv if applicable
+                    if asset_defs:
+                        export_asset_coords_to_csv(
+                            asset_defs, draw_image_x, draw_image_y, image_boundary
+                        )
+                        print("Asset coordinates saved as level_asset_coordinates.csv")
+                    # Export maze metadata to csv
+                    # Maze metadata
+                    maze_metadata = {
+                        "maze_color": maze_colors[maze_color_index],
+                        "level_speed": level_speeds[level_speed_index],
+                        "corn_quantity": corn_quantities[corn_index],
+                        "tomato_quantity": tomato_quantities[tomato_index],
+                        "pumpkin_quantity": pumpkin_quantities[pumpkin_index],
+                    }
+                    export_metadata(maze_metadata)
+                    print("Maze metadata saved as level_metadata.csv")
+                    # Create maze grid and export to text file
+                    my_maze = invert_maze_to_grid(
+                        chosen_coords,
+                        maze_width,
+                        maze_height,
+                        draw_image_x,
+                        draw_image_y,
+                        image_boundary,
+                        block_width,
+                    )
+                    export_maze_grid_to_txt(my_maze)
+                    print("Level grid saved as level_grid.txt")
+
+                    # Move maze files to a selected directory
+                    messagebox.showinfo("Instructions", "Please create a new folder" \
+                    " at the location shown in the next dialog box, then select that " \
+                    "new folder.\n\nUse a folder name such as custom_map_01." \
+                    "\n\nClick OK to proceed.")
+                    selected_directory = filedialog.askdirectory(
+                        initialdir="../assets/levels/", title="Select a Directory"
+                    )
+                    move_files(".", selected_directory)
             elif event.key == pygame.K_w and maze_draw:
                 # Change the color of the maze
                 maze_color_index_old = maze_color_index
@@ -283,13 +288,13 @@ while running:
                 else:
                     level_speed_index += 1
                 # Erase displayed speed
-                temp_rect = pygame.Rect(1450, 400, 400, 100)
+                temp_rect = pygame.Rect(1450, 350, 400, 100)
                 draw_square(temp_rect, screen, white, dirty_rects)
                 # Display new number
                 text_surface = font.render(
                     str(level_speeds[level_speed_index]), True, blue
                 )
-                screen.blit(text_surface, (1450, 400))
+                screen.blit(text_surface, (1450, 350))
                 pygame.display.update()
             elif event.key == pygame.K_j and maze_draw:
                 # Cycle corn quantity
@@ -351,91 +356,93 @@ while running:
                 num_maze_squares = grid_space(my_maze)/(block_width ** 2)
                 # Create warning message if path space deemed too sparse
                 if num_maze_squares < 8:
-                     messagebox.showinfo("Warning", "Maze has insufficient space for assets, so a re-draw may be required. Click OK then click back onto Level Builder window.")
-                # Flag for discontinuing maze drawing
-                maze_draw = False
-                # Overwrite old text
-                right_rect = pygame.Rect(1140, 100, width - 1140, height - 100)
-                screen.fill(white, right_rect)
-                # Display instruction text
-                text_strings = [
-                    "Key (see list below) to place",
-                    "asset at cursor location",
-                    "Right click to undo",
-                    "P to save screenshot",
-                    "C to export maze to files",
-                ]
-                for row, text_line in enumerate(text_strings):
-                    text_surface = font.render(text_line, True, black)
-                    if row == 1:
-                        screen.blit(text_surface, (1140, 100 + row * 40))
-                    else:
-                        screen.blit(text_surface, (1140, 100 + row * 50))
-                # List of asset choices
-                black_rect = pygame.Rect(1130, 390, 330, 260)
-                screen.fill(black, black_rect)
-                asset_defs = [
-                    {
-                        "letter": "S",
-                        "description": "Player start location",
-                        "color": green,
-                        "location": (),
-                    },
-                    {
-                        "letter": "R",
-                        "description": "Player respawn location",
-                        "color": dkgreen,
-                        "location": (),
-                    },
-                    {
-                        "letter": "E",
-                        "description": "Enemy start location",
-                        "color": red,
-                        "location": (),
-                    },
-                    {
-                        "letter": "1",
-                        "description": "Item 1 location",
-                        "color": blue,
-                        "location": (),
-                    },
-                    {
-                        "letter": "2",
-                        "description": "Item 2 location",
-                        "color": magenta,
-                        "location": (),
-                    },
-                    {
-                        "letter": "3",
-                        "description": "Item 3 location",
-                        "color": orange,
-                        "location": (),
-                    },
-                    {
-                        "letter": "4",
-                        "description": "Item 4 location",
-                        "color": yellow,
-                        "location": (),
-                    },
-                    {
-                        "letter": "H",
-                        "description": "Exit location",
-                        "color": white,
-                        "location": (),
-                    },
-                ]
-                asset_letters = [asset["letter"].lower() for asset in asset_defs]
-                for index, asset in enumerate(asset_defs):
-                    screen.blit(
-                        font_small.render(
-                            asset["letter"] + ": " + asset["description"],
-                            True,
-                            asset["color"],
-                        ),
-                        (1140, 400 + index * 30),
-                    )
-                pygame.display.update()
-
+                     messagebox.showinfo("Warning", "Maze has insufficient space for assets.\n\n" \
+                     "Path area must equal at least 8 full squares.\n\n" \
+                     "Click OK then click back onto Level Builder window.")
+                else:
+                    # Flag for discontinuing maze drawing
+                    maze_draw = False
+                    # Overwrite old text
+                    right_rect = pygame.Rect(1140, 100, width - 1140, height - 100)
+                    screen.fill(white, right_rect)
+                    # Display instruction text
+                    text_strings = [
+                        "Key (see list below) to place",
+                        "asset at cursor location",
+                        "Right click to undo",
+                        "P to save screenshot",
+                        "C to export maze to files",
+                    ]
+                    for row, text_line in enumerate(text_strings):
+                        text_surface = font.render(text_line, True, black)
+                        if row == 1:
+                            screen.blit(text_surface, (1140, 100 + row * 40))
+                        else:
+                            screen.blit(text_surface, (1140, 100 + row * 50))
+                    # List of asset choices
+                    black_rect = pygame.Rect(1130, 390, 330, 260)
+                    screen.fill(black, black_rect)
+                    asset_defs = [
+                        {
+                            "letter": "S",
+                            "description": "Player start location",
+                            "color": green,
+                            "location": (),
+                        },
+                        {
+                            "letter": "R",
+                            "description": "Player respawn location",
+                            "color": dkgreen,
+                            "location": (),
+                        },
+                        {
+                            "letter": "E",
+                            "description": "Enemy start location",
+                            "color": red,
+                            "location": (),
+                        },
+                        {
+                            "letter": "1",
+                            "description": "Item 1 location",
+                            "color": blue,
+                            "location": (),
+                        },
+                        {
+                            "letter": "2",
+                            "description": "Item 2 location",
+                            "color": magenta,
+                            "location": (),
+                        },
+                        {
+                            "letter": "3",
+                            "description": "Item 3 location",
+                            "color": orange,
+                            "location": (),
+                        },
+                        {
+                            "letter": "4",
+                            "description": "Item 4 location",
+                            "color": yellow,
+                            "location": (),
+                        },
+                        {
+                            "letter": "H",
+                            "description": "Exit location",
+                            "color": white,
+                            "location": (),
+                        },
+                    ]
+                    asset_letters = [asset["letter"].lower() for asset in asset_defs]
+                    for index, asset in enumerate(asset_defs):
+                        screen.blit(
+                            font_small.render(
+                                asset["letter"] + ": " + asset["description"],
+                                True,
+                                asset["color"],
+                            ),
+                            (1140, 400 + index * 30),
+                        )
+                    pygame.display.update()
             # If asset key is pressed once this mode chosen, draw asset
             elif not maze_draw and event.unicode.lower() in asset_letters:
                 matching_asset = [
