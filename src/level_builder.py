@@ -127,15 +127,20 @@ corn_index = 0
 tomato_index = 0
 pumpkin_index = 0
 
+
 # Load enemy images and scale them
 images = import_image_dir("../assets/sprites/")
 for image in images:
-    images[image] = pygame.transform.scale(images[image],
-    (
-        int(images[image].get_width() * scale_factor),
-        int(images[image].get_height() * scale_factor),
-    ),
-)
+    images[image] = pygame.transform.scale(
+        images[image],
+        (
+            int(images[image].get_width() * scale_factor),
+            int(images[image].get_height() * scale_factor),
+        ),
+    )
+    # Make teal the transparent color
+    images[image].set_colorkey(teal)
+
 corn_image = images["corn"]
 tomato_image = images["tomato"]
 pumpkin_image = images["pumpkin"]
@@ -213,9 +218,12 @@ while running:
             elif event.key == pygame.K_c and not maze_draw:
                 # Warning to user that final export will need all assets
                 if len(asset_coords) < 8:
-                     messagebox.showinfo("Warning", "Ensure all assets are placed before final export!\n\n" \
-                     "If there is insufficient space, it may be necessary to exit and restart the drawing.\n\n" \
-                     "Click OK then click back onto Level Builder window.")
+                    messagebox.showinfo(
+                        "Warning",
+                        "Ensure all assets are placed before final export!\n\n"
+                        "If there is insufficient space, it may be necessary to exit and restart the drawing.\n\n"
+                        "Click OK then click back onto Level Builder window.",
+                    )
                 else:
                     # Export path coordinates to csv
                     export_path_coords_to_csv(
@@ -253,10 +261,13 @@ while running:
                     print("Level grid saved as level_grid.txt")
 
                     # Move maze files to a selected directory
-                    messagebox.showinfo("Instructions", "Please create a new folder" \
-                    " at the location shown in the next dialog box, then select that " \
-                    "new folder.\n\nUse a folder name such as custom_map_01." \
-                    "\n\nClick OK to proceed.")
+                    messagebox.showinfo(
+                        "Instructions",
+                        "Please create a new folder"
+                        " at the location shown in the next dialog box, then select that "
+                        "new folder.\n\nUse a folder name such as custom_map_01."
+                        "\n\nClick OK to proceed.",
+                    )
                     selected_directory = filedialog.askdirectory(
                         initialdir="../assets/levels/", title="Select a Directory"
                     )
@@ -353,12 +364,15 @@ while running:
                     block_width,
                 )
                 # Determine how many full squares reside in maze
-                num_maze_squares = grid_space(my_maze)/(block_width ** 2)
+                num_maze_squares = grid_space(my_maze) / (block_width**2)
                 # Create warning message if path space deemed too sparse
                 if num_maze_squares < 8:
-                     messagebox.showinfo("Warning", "Maze has insufficient space for assets.\n\n" \
-                     "Path area must equal at least 8 full squares.\n\n" \
-                     "Click OK then click back onto Level Builder window.")
+                    messagebox.showinfo(
+                        "Warning",
+                        "Maze has insufficient space for assets.\n\n"
+                        "Path area must equal at least 8 full squares.\n\n"
+                        "Click OK then click back onto Level Builder window.",
+                    )
                 else:
                     # Flag for discontinuing maze drawing
                     maze_draw = False

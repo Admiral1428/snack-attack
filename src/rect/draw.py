@@ -127,5 +127,4 @@ def draw_maze(
 
         # Pause to create an old-school block-by-block tracing of the level,
         # and gives player a moment to recover from previous level
-        time.sleep(0.003) 
-        
+        time.sleep(0.003)
