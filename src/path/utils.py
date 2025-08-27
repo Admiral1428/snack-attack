@@ -41,7 +41,7 @@ def rect_within_boundary(
 def edge_diagonals_legal(subset_grid, maze_height, maze_width, block_width):
     for row in range(maze_height):
         for col in range(maze_width):
-            # Diagonal must be equal to least block_width 
+            # Diagonal must be equal to least block_width
             # (since grid, no need for square root)
             # Lower left edge
             #    /
@@ -222,7 +222,7 @@ def overlayed_squares_legal(subset_grid, maze_height, maze_width, block_width):
                     and (row + calc_height) < maze_height
                     and calc_height <= block_width
                 ):
-                    # Since we are iterating from 0th row and 0th col, 
+                    # Since we are iterating from 0th row and 0th col,
                     # just check downwards
                     if subset_grid[row + calc_height][col : col + block_width + 1] == [
                         0
@@ -232,13 +232,13 @@ def overlayed_squares_legal(subset_grid, maze_height, maze_width, block_width):
                         subset_grid[row + calc_height][col : col + block_width + 1] == [
                             1
                         ] * (block_width + 1)
-                        # Since zeros found, increment height of the 
+                        # Since zeros found, increment height of the
                         # discovered path area
                         calc_height += 1
                     else:
                         found_wall = True
                 if calc_height > block_width:
-                    # Found instance of square fitting into path which is 
+                    # Found instance of square fitting into path which is
                     # too large
                     return False
     return True

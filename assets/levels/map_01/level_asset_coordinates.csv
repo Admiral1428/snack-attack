@@ -1,0 +1,9 @@
+letter,description,color,location
+S,Player start location,"(0, 255, 0)","(776, 504)"
+R,Player respawn location,"(0, 102, 0)","(40, 24)"
+E,Enemy start location,"(255, 0, 0)","(344, 408)"
+1,Item 1 location,"(0, 0, 255)","(104, 88)"
+2,Item 2 location,"(253, 61, 181)","(936, 136)"
+3,Item 3 location,"(255, 128, 0)","(984, 744)"
+4,Item 4 location,"(255, 255, 0)","(40, 744)"
+H,Exit location,"(255, 255, 255)","(744, 264)"

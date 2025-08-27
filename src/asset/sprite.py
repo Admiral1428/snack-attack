@@ -58,14 +58,12 @@ class Sprite:
         delta_x = self.direction_current[0]
         delta_y = self.direction_current[1]
         if not (delta_x == 0 and delta_y == 0):
-            if self.can_move(
-                delta_x, delta_y, maze_grid
-            ):
+            if self.can_move(delta_x, delta_y, maze_grid):
                 # Set orientation based on current direction
                 if self.can_rotate:
                     self.set_orientation()
                 # Since current direction possible, move in that direction
-                self.move(delta_x, delta_y, maze_grid)                
+                self.move(delta_x, delta_y, maze_grid)
                 # Change previous direction back to 0, 0
                 self.direction_previous = [0, 0]
             else:
@@ -127,6 +125,7 @@ class Sprite:
         elif self.direction_current[1] > 0 and not self.first_move:
             self.rotation_angle = -90  # rotate cw
             self.mirror = False
+
     # Method to draw onto screen at its position, with screen offsets as needed
     def draw(self, draw_image_x, draw_image_y, image_boundary, screen):
         draw_image = self.image
