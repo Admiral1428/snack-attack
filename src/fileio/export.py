@@ -1,3 +1,5 @@
+import os
+import shutil
 import csv
 
 
@@ -49,3 +51,21 @@ def export_maze_grid_to_txt(maze_grid):
         row_str = ",".join(map(str, row))
         f.write(row_str + "\n")
     f.close()
+
+
+# Move files to another directory
+def move_files(source_directory, destination_directory):
+    if not os.path.exists(destination_directory):
+        os.makedirs(destination_directory)
+
+    for filename in os.listdir(source_directory):
+        # Check if the file ends with .csv or .txt or .png
+        if filename.endswith((".csv", ".txt", ".png")):
+            source_path = os.path.join(source_directory, filename)
+            destination_path = os.path.join(destination_directory, filename)
+
+            try:
+                shutil.move(source_path, destination_path)
+                print(f"Moved '{filename}' to '{destination_directory}'")
+            except Exception as e:
+                print(f"Error moving '{filename}': {e}")

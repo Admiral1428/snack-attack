@@ -1,4 +1,5 @@
 import pygame
+import time
 from rect.utils import define_rect, shift_rect_to_divisible_pos
 
 
@@ -91,3 +92,40 @@ def draw_asset(
         asset_coords.append((my_rect.center))
         return my_rect.center
     return None
+
+
+# Function to draw maze walls
+def draw_maze(
+    draw_image_x,
+    draw_image_y,
+    image_boundary,
+    maze_width,
+    maze_height,
+    block_width,
+    maze_color,
+    path_color,
+    path_coords,
+    screen,
+):
+    outer_rect = pygame.Rect(
+        draw_image_x,
+        draw_image_y,
+        maze_width + (2 * image_boundary),
+        maze_height + (2 * image_boundary),
+    )
+    pygame.draw.rect(screen, maze_color, outer_rect)
+    pygame.display.update()
+
+    dirty_rects = []
+    for coord in path_coords:
+        shifted_coord = (
+            coord[0] + draw_image_x + image_boundary,
+            coord[1] + draw_image_x + image_boundary,
+        )
+        my_rect = define_rect(shifted_coord, block_width)
+        draw_square(my_rect, screen, path_color, dirty_rects)
+
+        # Pause to create an old-school block-by-block tracing of the level,
+        # and gives player a moment to recover from previous level
+        time.sleep(0.003) 
+        
