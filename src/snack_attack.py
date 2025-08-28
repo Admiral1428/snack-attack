@@ -2,6 +2,7 @@ import os
 import ast
 import time
 import pygame
+from utils.exceptions import CustomError
 from rect.draw import draw_maze
 from asset.sprite import Sprite
 from fileio.load import (
@@ -95,9 +96,12 @@ level_dir = "../assets/levels/"
 levels = get_levels(level_dir)
 
 if not levels:
-    print(f"Could not load any level folders at {level_dir}")
+    raise CustomError(f"Could not load any level folders at {level_dir}")
 else:
     level_index = 0
+
+# Level speed definitions for time delay
+level_speed_timing = {"slow": 0.005, "medium": 0.004, "fast": 0.003, "frantic": 0.002}
 
 # Update initial display
 pygame.display.update()
@@ -157,7 +161,7 @@ while running:
             screen,
         )
 
-        # Save subsurface for game loop re-draw 
+        # Save subsurface for game loop re-draw
         rect_area = pygame.Rect(0, 0, width, height)
         temp_surf = screen.subsurface(rect_area)
         area_surf = temp_surf.copy()
@@ -165,55 +169,61 @@ while running:
         # Save relevant metadata
         level_speed = maze_metadata.get("level_speed")
 
-        # Save maze asset coordinates into variables
-        player_start_coord = (0, 0)
-        player_respawn_coord = (0, 0)
-        enemy_start_coord = (0, 0)
-        item_1_coord = (0, 0)
-        item_2_coord = (0, 0)
-        item_3_coord = (0, 0)
-        item_4_coord = (0, 0)
-        exit_coord = (0, 0)
-        for dict in maze_assets:
-            if dict.get("letter") == "S":
-                player_start_coord = ast.literal_eval(dict.get("location"))
-            elif dict.get("letter") == "R":
-                player_respawn_coord = ast.literal_eval(dict.get("location"))
-            elif dict.get("letter") == "E":
-                enemy_start_coord = ast.literal_eval(dict.get("location"))
-            elif dict.get("letter") == "1":
-                item_1_coord = ast.literal_eval(dict.get("location"))
-            elif dict.get("letter") == "2":
-                item_2_coord = ast.literal_eval(dict.get("location"))
-            elif dict.get("letter") == "3":
-                item_3_coord = ast.literal_eval(dict.get("location"))
-            elif dict.get("letter") == "4":
-                item_4_coord = ast.literal_eval(dict.get("location"))
-            elif dict.get("letter") == "E":
-                exit_coord = ast.literal_eval(dict.get("location"))
+        # Assign appropriate delay for level speed, defaulting to slow
+        if level_speed in level_speed_timing.keys():
+            level_speed_delay = level_speed_timing.get(level_speed)
+        else:
+            level_speed_delay = level_speed_timing.get("slow")
 
+        # Save maze asset coordinates into a single dictionary and check validity
+        # of asset coordinates with error handling
+        allowable_letters = ["S", "R", "E", "1", "2", "3", "4", "H"]
+        asset_coord = {}
+        for dict in maze_assets:
+            asset_coord[dict.get("letter")] = ast.literal_eval(dict.get("location"))
+        if (
+            len(asset_coord) != len(allowable_letters)
+            or any(
+                not isinstance(value, tuple) or not value
+                for value in asset_coord.values()
+            )
+            or any(key not in allowable_letters for key in asset_coord.keys())
+        ):
+            custom_string = (
+                "Level error! The asset coordinates csv must include"
+                " exactly 8 unique asset locations, assigned to each of the following: "
+            )
+            raise CustomError(custom_string + str(allowable_letters))
+
+        # Set flags
         draw_asset_starts = True
         maze_draw = False
     # Draw assets at their starting locations
     elif draw_asset_starts:
+
         # Initialize player
         player = Sprite(
             "player",
             images["combine"],
-            player_start_coord,
+            asset_coord.get("S"),
             100,
             True,
             int(block_width / 4),
             block_width,
         )
+
         # Move player to respawn if they were destroyed
         if player.isdestroyed():
             start_to_respawn = (
-                player_respawn_coord[0] - player_start_coord[0],
-                player_respawn_coord[1] - player_start_coord[1],
+                asset_coord.get("R")[0] - asset_coord.get("S")[0],
+                asset_coord.get("R")[1] - asset_coord.get("S")[1],
             )
             player.move(start_to_respawn, maze_grid)
+
+        # Draw player, update screen, and set flags
         display_rect = player.draw(draw_image_x, draw_image_y, image_boundary, screen)
+
+        # Update screen and set flags
         pygame.display.flip()
         draw_asset_starts = False
         rungame = True
@@ -235,15 +245,8 @@ while running:
         elif keys[pygame.K_SPACE]:
             player.set_direction(0, 0, maze_grid)  # stop
 
-        # Delays to achieve level speed
-        if level_speed == "slow":
-            time.sleep(0.005)
-        elif level_speed == "medium":
-            time.sleep(0.004)
-        elif level_speed == "fast":
-            time.sleep(0.003)
-        elif level_speed == "frantic":
-            time.sleep(0.002)
+        # Set delay to achieve level speed
+        time.sleep(level_speed_delay)
 
         # Move player, draw sprite
         player.perform_move(maze_grid)
@@ -253,7 +256,9 @@ while running:
         pygame.display.flip()
     elif paused:
         if need_pause_text:
-            text_surface = font.render("Game paused. Press Pause button to resume.", True, white)
+            text_surface = font.render(
+                "Game paused. Press Pause button to resume.", True, white
+            )
             screen.blit(text_surface, (500, 850))
             pygame.display.flip()
             need_pause_text = False

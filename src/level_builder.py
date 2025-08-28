@@ -3,7 +3,7 @@ import pygame
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from rect.utils import define_rect, shift_rect_to_divisible_pos
-from rect.draw import draw_square, draw_asset
+from rect.draw import draw_square, draw_asset, draw_maze
 from grid.utils import invert_maze_to_grid, grid_space
 from fileio.load import import_image_dir
 from fileio.export import (
@@ -51,9 +51,6 @@ image_boundary = 4
 # Set window title
 pygame.display.set_caption("Level Builder")
 
-# Load template image used for defining drawable area
-original_image = pygame.image.load("../assets/outline_template.png").convert_alpha()
-
 # Define colors
 white = (255, 255, 255)
 black = (0, 0, 0)
@@ -67,20 +64,14 @@ magenta = (253, 61, 181)
 red = (255, 0, 0)
 blue = (0, 0, 255)
 gray = (128, 128, 128)
+ltgray = (212, 212, 212)
 
 # Create a list of colors to be used for selecting maze wall color
 maze_colors = [teal, yellow, orange, green, dkgreen, purple, magenta, red, blue, gray]
 maze_color_index = 0
 
-# Scale template image and variables
+# Scale variables
 scale_factor = 4
-scaled_image = pygame.transform.scale(
-    original_image,
-    (
-        int(original_image.get_width() * scale_factor),
-        int(original_image.get_height() * scale_factor),
-    ),
-)
 maze_width *= scale_factor
 maze_height *= scale_factor
 block_width *= scale_factor
@@ -90,8 +81,32 @@ image_boundary *= scale_factor
 # Fill background with white color
 screen.fill(white)
 
-# Blit the scaled image onto the original screen
-screen.blit(scaled_image, (draw_image_x, draw_image_y))
+# Draw empty maze onto screen, with a gray boundary
+# and inside drawable teal area
+draw_maze(
+    draw_image_x,
+    draw_image_y,
+    image_boundary,
+    maze_width,
+    maze_height,
+    block_width,
+    ltgray,
+    ltgray,
+    [],
+    screen,
+)
+draw_maze(
+    draw_image_x + image_boundary,
+    draw_image_y + image_boundary,
+    0,
+    maze_width,
+    maze_height,
+    block_width,
+    teal,
+    teal,
+    [],
+    screen,
+)
 
 # Display instruction text
 text_strings = [
@@ -175,6 +190,9 @@ dirty_rects = []
 
 # List of mouse coordinates that have been added
 chosen_coords = []
+
+# Track previous shifted coordinate history
+shifted_coords_history = []
 
 # List of assets and asset coordinates that have been added
 asset_defs = []
@@ -498,18 +516,24 @@ while running:
             my_rect, draw_image_x, draw_image_y, min_block_spacing, image_boundary
         )
 
-        if (
-            my_rect.center not in chosen_coords
-            and rect_within_boundary(
+        # Check to make sure the current shifted position is not the same as
+        # the last, and that it's not in chosen coords. If all criteria met,
+        # draw the new path square
+        if not shifted_coords_history:
+            shifted_coords_history.append(my_rect.center)
+        elif (
+            my_rect.center != shifted_coords_history[-1]
+            and my_rect.center not in chosen_coords
+        ):
+            shifted_coords_history.append(my_rect.center)
+            if rect_within_boundary(
                 my_rect,
                 draw_image_x,
                 draw_image_y,
                 image_boundary,
                 maze_width,
                 maze_height,
-                block_width,
-            )
-            and rect_gives_uniform_path(
+            ) and rect_gives_uniform_path(
                 chosen_coords,
                 my_rect,
                 maze_width,
@@ -518,16 +542,18 @@ while running:
                 draw_image_y,
                 image_boundary,
                 block_width,
-            )
-        ):
-            # Add updated mouse position to list of previous points
-            chosen_coords.append((my_rect.center))
-            draw_square(my_rect, screen, black, dirty_rects)
+            ):
+                # Add updated mouse position to list of previous points
+                chosen_coords.append((my_rect.center))
+                draw_square(my_rect, screen, black, dirty_rects)
 
     # Perform undo operation, which requires re-drawing overlapping squares
     elif mouse_right_click and len(chosen_coords) > 0 and maze_draw:
         # Remove last coordinate (undo)
         last_coord = chosen_coords.pop()
+        # Remove last shifted coordinate from history
+        shifted_coords_history.pop()
+        # Draw a block overtop the old coordinate
         my_rect = define_rect(last_coord, block_width)
         selected_color = maze_colors[maze_color_index]
         draw_square(my_rect, screen, selected_color, dirty_rects)
