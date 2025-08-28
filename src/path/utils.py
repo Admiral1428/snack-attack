@@ -1,4 +1,6 @@
 import pygame
+import time
+import numpy as np
 from grid.utils import invert_maze_to_grid
 
 
@@ -11,7 +13,6 @@ def rect_within_boundary(
     image_boundary,
     maze_width,
     maze_height,
-    block_width,
 ):
     # Get corners of square that would be drawn
     top_left = my_rect.topleft
@@ -211,40 +212,34 @@ def edge_diagonals_legal(subset_grid, maze_height, maze_width, block_width):
 
 # Function to check if path width larger than necessary
 # by looking for squares larger than standard block width
-def overlayed_squares_legal(subset_grid, maze_height, maze_width, block_width):
-    for row in range(maze_height - block_width):
-        for col in range(maze_width - block_width):
-            if subset_grid[row][col : col + block_width + 1] == [0] * (block_width + 1):
-                found_wall = False
-                calc_height = 1
-                while (
-                    not found_wall
-                    and (row + calc_height) < maze_height
-                    and calc_height <= block_width
-                ):
-                    # Since we are iterating from 0th row and 0th col,
-                    # just check downwards
-                    if subset_grid[row + calc_height][col : col + block_width + 1] == [
-                        0
-                    ] * (block_width + 1):
-                        # This section should not be considered again in next
-                        # search, so fill it in
-                        subset_grid[row + calc_height][col : col + block_width + 1] == [
-                            1
-                        ] * (block_width + 1)
-                        # Since zeros found, increment height of the
-                        # discovered path area
-                        calc_height += 1
-                    else:
-                        found_wall = True
-                if calc_height > block_width:
-                    # Found instance of square fitting into path which is
-                    # too large
+def overlayed_squares_legal(subset_grid, block_width):
+    if not subset_grid or not subset_grid[0]:
+        return False
+
+    rows, cols = len(subset_grid), len(subset_grid[0])
+
+    # dp[i][j] stores the side length of the largest square of 0s
+    # with its bottom-right corner at (i, j).
+    dp = [[0] * cols for _ in range(rows)]
+
+    # Iterate through the grid to fill the dp table
+    for i in range(rows):
+        for j in range(cols):
+            if subset_grid[i][j] == 0:
+                # For the first row and column, the side length is 1
+                if i == 0 or j == 0:
+                    dp[i][j] = 1
+                else:
+                    # The side length is 1 plus the minimum of the
+                    # three adjacent squares' side lengths.
+                    dp[i][j] = min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]) + 1
+
+                if dp[i][j] > block_width:
                     return False
     return True
 
 
-# Function to determine if adjusted rect position will result in a uniform path
+# Wrapper function to determine if adjusted rect position will result in a uniform path
 def rect_gives_uniform_path(
     coords,
     my_rect,
@@ -280,9 +275,7 @@ def rect_gives_uniform_path(
         )
 
         # Check if rectangular regions exist which exceed block width
-        overlayed_squares_check = overlayed_squares_legal(
-            subset_grid, maze_height, maze_width, block_width
-        )
+        overlayed_squares_check = overlayed_squares_legal(subset_grid, block_width)
         # Check diagonal dimensions between edges if the first check passed
         if overlayed_squares_check:
             return edge_diagonals_legal(
