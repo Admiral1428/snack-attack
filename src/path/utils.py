@@ -1,6 +1,4 @@
 import pygame
-import time
-import numpy as np
 from grid.utils import invert_maze_to_grid
 
 
