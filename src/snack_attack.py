@@ -22,8 +22,8 @@ if os.name == "nt":
 pygame.init()
 pygame.font.init()
 
-# Use Arial text
-font = pygame.font.SysFont("Arial", 26)
+# Use lucidaconsole text for retro look
+font = pygame.font.SysFont("lucidaconsole", 26)
 
 # Dimensions for window
 width, height = (1600, 900)
@@ -71,9 +71,13 @@ screen.fill(black)
 
 # Display instruction text
 text_strings = [
-    "I, K, J, L = Move up, down, left, right",
+    "I = Move up",
+    "K = Move down",
+    "J = Move left",
+    "L = Move right",
     "Space = Stop movement",
     "F = Fire weapon",
+    "************************",
     "Pause = Pause game",
     "S = Skip level",
 ]
@@ -91,6 +95,9 @@ for image in images:
     # Make teal the transparent color
     images[image].set_colorkey(teal)
 
+# Store dictionary with item image definitions
+item_image_defs = {"1": "strawberry", "2": "cherry", "3": "banana", "4": "grape"}
+
 # Get levels and their supporting file paths
 level_dir = "../assets/levels/"
 levels = get_levels(level_dir)
@@ -101,14 +108,14 @@ else:
     level_index = 0
 
 # Level speed definitions for time delay
-level_speed_timing = {"slow": 0.005, "medium": 0.004, "fast": 0.003, "frantic": 0.002}
+level_speed_timing = {"slow": 0.004, "medium": 0.003, "fast": 0.002, "frantic": 0.001}
 
 # Update initial display
 pygame.display.update()
 
 # Game loop
 maze_draw = True
-draw_asset_starts = False
+create_sprites = False
 rungame = False
 paused = False
 need_pause_text = False
@@ -147,7 +154,7 @@ while running:
         # Print instructions and draw maze
         for row, text_line in enumerate(text_strings):
             text_surface = font.render(text_line, True, white)
-            screen.blit(text_surface, (1140, 500 + row * 50))
+            screen.blit(text_surface, (1140, 350 + row * 50))
         draw_maze(
             draw_image_x,
             draw_image_y,
@@ -196,10 +203,26 @@ while running:
             raise CustomError(custom_string + str(allowable_letters))
 
         # Set flags
-        draw_asset_starts = True
+        create_sprites = True
+        exit_created = False
         maze_draw = False
-    # Draw assets at their starting locations
-    elif draw_asset_starts:
+
+    # Create Sprite objects
+    elif create_sprites:
+
+        # Initialize items
+        items = {}
+        for key, value in asset_coord.items():
+            if key in item_image_defs:
+                items[key] = Sprite(
+                    key,
+                    images[item_image_defs.get(key)],
+                    asset_coord.get(key),
+                    100,
+                    False,
+                    int(block_width / 4),
+                    block_width,
+                )
 
         # Initialize player
         player = Sprite(
@@ -220,13 +243,26 @@ while running:
             )
             player.move(start_to_respawn, maze_grid)
 
-        # Draw player, update screen, and set flags
-        display_rect = player.draw(draw_image_x, draw_image_y, image_boundary, screen)
+        player = Sprite(
+            "player",
+            images["combine"],
+            asset_coord.get("S"),
+            100,
+            True,
+            int(block_width / 4),
+            block_width,
+        )
+
+        # Draw items, player, update screen, and set flags
+        [items[item].draw(draw_image_x, draw_image_y, image_boundary, screen) for item in items]
+        player.draw(draw_image_x, draw_image_y, image_boundary, screen)
 
         # Update screen and set flags
         pygame.display.flip()
-        draw_asset_starts = False
         rungame = True
+        create_sprites = False
+        
+    # Primary game loop
     elif rungame and not paused:
         # Clear screen and re-draw background
         screen.fill(black)
@@ -235,22 +271,58 @@ while running:
         # Player movement input
         keys = pygame.key.get_pressed()
         if keys[pygame.K_l]:
-            player.set_direction(1, 0, maze_grid)  # right
+            player.set_direction(1, 0)  # right
         elif keys[pygame.K_j]:
-            player.set_direction(-1, 0, maze_grid)  # left
+            player.set_direction(-1, 0)  # left
         elif keys[pygame.K_i]:
-            player.set_direction(0, -1, maze_grid)  # up
+            player.set_direction(0, -1)  # up
         elif keys[pygame.K_k]:
-            player.set_direction(0, 1, maze_grid)  # down
+            player.set_direction(0, 1)  # down
         elif keys[pygame.K_SPACE]:
-            player.set_direction(0, 0, maze_grid)  # stop
+            player.set_direction(0, 0)  # stop
 
         # Set delay to achieve level speed
         time.sleep(level_speed_delay)
 
-        # Move player, draw sprite
+        # Move player
         player.perform_move(maze_grid)
+
+        # Detect item collision and delete those items
+        delete_items = []
+        for item in items:
+            if player.collide_check(items[item]):
+                delete_items.append(item)
+        for item in delete_items:
+            del items[item]
+
+        # Detect 
+
+        # If no more items, draw exit
+        if not items and not exit_created:
+            exit = Sprite(
+                "H",
+                images["door"],
+                asset_coord.get("H"),
+                100,
+                False,
+                int(block_width / 4),
+                block_width,
+            )
+            exit_created = True
+
+        # Draw item and player sprites
+        [items[item].draw(draw_image_x, draw_image_y, image_boundary, screen) for item in items]
         player.draw(draw_image_x, draw_image_y, image_boundary, screen)
+        
+        if exit_created:
+            exit.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            # Proceed to next level if collision with exit
+            if player.collide_check(exit):
+                if level_index >= len(levels) - 1:
+                    level_index = 0
+                else:
+                    level_index += 1
+                maze_draw = True
 
         # Update screen
         pygame.display.flip()
