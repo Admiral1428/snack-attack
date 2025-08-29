@@ -1,4 +1,5 @@
 import pygame
+from collections import deque
 from rect.utils import define_rect
 
 
@@ -18,29 +19,31 @@ class Sprite:
         self.rotation_angle = 0  # + counterclockwise
         self.mirror = False
         self.destroyed = False
-        self.position_history = []
         self.direction = (0, 0)
-        self.direction_history = []
+        self.desired_direction = ()
         self.motion_vector = (0, 0)
-        self.motion_vector_history = []
+        self.motion_vector_history = deque(maxlen = 1)
 
     # Method to move the asset
     def move(self, delta_x, delta_y, maze_grid):
-        # Store current position
-        self.position_history.append(self.center_position)
-        # Move Rect objects and position
-        self.hitbox_rect.move_ip(delta_x, delta_y)
-        self.path_rect.move_ip(delta_x, delta_y)
-        self.center_position = (
-            self.center_position[0] + delta_x,
-            self.center_position[1] + delta_y,
-        )
-        # Store motion vector into history and calculate new
-        self.motion_vector_history.append(self.motion_vector)
-        self.motion_vector = (
-            self.center_position[0] - self.position_history[-1][0],
-            self.center_position[1] - self.position_history[-1][1],
-        )
+        if delta_x != 0 or delta_y != 0:
+            # Initialize flag, only to be used if motion vector changes
+            orientation_check = False
+            # Store current motion vector if new one is different
+            if not self.motion_vector_history or self.motion_vector != (delta_x, delta_y):
+                self.motion_vector_history.append(self.motion_vector)
+                orientation_check = True
+            # Move Rect objects and position
+            self.hitbox_rect.move_ip(delta_x, delta_y)
+            self.path_rect.move_ip(delta_x, delta_y)
+            self.center_position = (
+                self.center_position[0] + delta_x,
+                self.center_position[1] + delta_y,
+            )
+            # Set new motion vector
+            self.motion_vector = (delta_x, delta_y)
+            # Determine new orientation if motion vector changed
+            if orientation_check: self.set_orientation()
 
     # Method to check if the asset can move within maze
     # Note that pygame.Rect not inclusive of bottom or right
@@ -65,27 +68,22 @@ class Sprite:
 
     # Determine and perform move based on direction and move check
     def perform_move(self, maze_grid):
-        delta_x = self.direction[0]
-        delta_y = self.direction[1]
-        if not (delta_x == 0 and delta_y == 0):
-            if self.can_move(delta_x, delta_y, maze_grid):
-                # Since current direction possible, move in that direction
-                self.move(delta_x, delta_y, maze_grid)
-                # Set orientation if there was a change to the motion
-                if self.motion_vector_history[-1] != self.motion_vector:
-                    # Set orientation based on current direction and/or position history
-                    if self.can_rotate:
-                        self.set_orientation()
-                # Add 0, 0 to direction history
-                self.direction_history.append((0, 0))
+        # If nonzero direction was commanded and is possible, move
+        if self.desired_direction and self.can_move(self.desired_direction[0], self.desired_direction[1], maze_grid):
+            # Don't override current direction if commanded was (0, 0),
+            # that way previous direction can be attempted if the next 
+            # commanded direction is not possible
+            if self.desired_direction == (0, 0):
+                self.move(0, 0, maze_grid)
             else:
-                # Otherwise try moving in the previous direction
-                delta_x = self.direction_history[-1][0]
-                delta_y = self.direction_history[-1][1]
-                if not (delta_x == 0 and delta_y == 0) and self.can_move(
-                    delta_x, delta_y, maze_grid
-                ):
-                    self.move(delta_x, delta_y, maze_grid)
+                self.direction = (self.desired_direction[0], self.desired_direction[1])
+                self.move(self.direction[0], self.direction[1], maze_grid)
+        # If current direction is possible, keep moving that way
+        elif self.can_move(self.direction[0], self.direction[1], maze_grid):
+            self.move(self.direction[0], self.direction[1], maze_grid)
+        else:
+            # No movement possible, so update motion vector with 0, 0
+            self.motion_vector = (0, 0)
 
     # Define orientation based on current and previous direction
     def set_orientation(self):
@@ -101,11 +99,11 @@ class Sprite:
         elif self.motion_vector[1] < 0 and self.motion_vector_history[-1][0] > 0:
             self.rotation_angle = 90  # rotate ccw
             self.mirror = False
-        # Moving up, where previous direction was left
+        # Moving up, where previous motion was left
         elif self.motion_vector[1] < 0 and self.motion_vector_history[-1][0] < 0:
             self.rotation_angle = 90  # rotate ccw
             self.mirror = True  # then mirror horizontally
-        # Moving up, covering case where previously moving down
+        # Moving up, where previous motion was down
         elif self.motion_vector[1] < 0 and self.motion_vector_history[-1][1] > 0:
             if self.mirror:
                 self.rotation_angle = 90  # rotate ccw
@@ -117,15 +115,15 @@ class Sprite:
         elif self.motion_vector[1] < 0:
             self.rotation_angle = 90  # rotate ccw
             self.mirror = False
-        # Moving down, where previous direction was right
+        # Moving down, where previous motion was right
         elif self.motion_vector[1] > 0 and self.motion_vector_history[-1][0] > 0:
             self.rotation_angle = -90  # rotate cw
             self.mirror = False
-        # Moving down, where previous direction was left
+        # Moving down, where previous motion was left
         elif self.motion_vector[1] > 0 and self.motion_vector_history[-1][0] < 0:
             self.rotation_angle = -90  # rotate cw
             self.mirror = True  # then mirror horizontally
-        # Moving down, covering case where previously moving up
+        # Moving down, where previous motion was up
         elif self.motion_vector[1] > 0 and self.motion_vector_history[-1][1] < 0:
             if self.mirror:
                 self.rotation_angle = -90  # rotate cw
@@ -150,22 +148,13 @@ class Sprite:
         image_rect.move_ip(draw_image_x + image_boundary, draw_image_y + image_boundary)
         screen.blit(draw_image, image_rect)
 
-    # Set sprite direction to input values
-    def set_direction(self, x_direction, y_direction, maze_grid):
-        # Store the previous direction since it may not be possible to move
-        # in new direction yet, then change current direction
-        if self.direction != (x_direction, y_direction):
-            # Don't store a stopped direction in previous variable
-            # since we want to know how to rotate object based on
-            # previous movement. Also ensure that current direction is
-            # navigable, as this check ensures we don't to stop in place
-            # from changing direction twice.
-            if self.direction != (0, 0) and self.can_move(
-                self.direction[0], self.direction[1], maze_grid
-            ):
-                self.direction_history.append(self.direction)
-            # Save new direction
-            self.direction = (x_direction, y_direction)
+    # Set sprite commanded direction to input values
+    def set_direction(self, x_direction, y_direction):
+        self.desired_direction = (x_direction, y_direction)
+
+    # Perform collision check with another sprite
+    def collide_check(self, second_sprite: "Sprite"):
+        return self.hitbox_rect.colliderect(second_sprite.hitbox_rect)
 
     # Set sprite health to input value
     def set_health(self, new_health):
