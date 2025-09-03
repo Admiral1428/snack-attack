@@ -110,8 +110,9 @@ draw_maze(
 
 # Display instruction text
 text_strings = [
-    "Left click to draw maze",
-    "Right click to undo",
+    "Left click or use arrow keys to",
+    "draw maze. Right click to undo.",
+    "",
     "W to cycle wall color",
     "A to end maze and place assets",
     "P to save screenshot",
@@ -122,16 +123,16 @@ text_strings = [
     "L to cycle # pumpkin enemies",
 ]
 for row, text_line in enumerate(text_strings):
-    if row <= 6:
+    if row <= 7:
         selected_color = black
-    elif row == 7:
-        selected_color = dkgreen
     elif row == 8:
+        selected_color = dkgreen
+    elif row == 9:
         selected_color = red
     else:
         selected_color = orange
     text_surface = font.render(text_line, True, selected_color)
-    screen.blit(text_surface, (1140, 100 + row * 50))
+    screen.blit(text_surface, (1140, 50 + row * 50))
 
 
 # Initialize number of enemies
@@ -202,6 +203,7 @@ asset_coords = []
 # Game loop
 mouse_left_held = False
 mouse_right_click = False
+arrow_pressed = False
 maze_draw = True
 running = True
 while running:
@@ -219,6 +221,14 @@ while running:
             if event.button == 1:  # Left mouse button
                 mouse_left_held = False
         elif event.type == pygame.KEYDOWN:
+            if maze_draw and event.key in [
+                pygame.K_UP,
+                pygame.K_DOWN,
+                pygame.K_LEFT,
+                pygame.K_RIGHT,
+            ]:
+                arrow_pressed = True
+                current_arrow = event.key
             if event.key == pygame.K_p:
                 screenshot_rect = pygame.Rect(
                     draw_image_x,
@@ -395,7 +405,7 @@ while running:
                     # Flag for discontinuing maze drawing
                     maze_draw = False
                     # Overwrite old text
-                    right_rect = pygame.Rect(1140, 100, width - 1140, height - 100)
+                    right_rect = pygame.Rect(1140, 50, width - 1140, height - 50)
                     screen.fill(white, right_rect)
                     # Display instruction text
                     text_strings = [
@@ -505,13 +515,44 @@ while running:
                             if asset.get("letter") == matching_asset[0].get("letter"):
                                 asset["location"] = asset_coord_result
 
-    # Check if the left mouse is currently held down (outside of event loop)
-    # If so, draw a new square at that location, if shifted to nearest nth
-    # coordinate is deemed legal (based on min_block_spacing)
-    if mouse_left_held and maze_draw:
-        current_mouse_pos = pygame.mouse.get_pos()
+    # Check if an arrow key was pressed, or if left mouse is currently held
+    # down (outside of event loop) If so, draw a new square at that location,
+    # if shifted to nearest nth coordinate is deemed legal (based on
+    # min_block_spacing)
+    if (arrow_pressed or mouse_left_held) and maze_draw:
+        if arrow_pressed:
+            if not chosen_coords:
+                # If no previous points chosen with mouse, start at upper left corner
+                current_selected_pos = (
+                    draw_image_x + image_boundary + int(block_width / 2),
+                    draw_image_y + image_boundary + int(block_width / 2),
+                )
+            elif current_arrow == pygame.K_UP:
+                current_selected_pos = (
+                    chosen_coords[-1][0],
+                    chosen_coords[-1][1] - min_block_spacing,
+                )
+            elif current_arrow == pygame.K_DOWN:
+                current_selected_pos = (
+                    chosen_coords[-1][0],
+                    chosen_coords[-1][1] + min_block_spacing,
+                )
+            elif current_arrow == pygame.K_LEFT:
+                current_selected_pos = (
+                    chosen_coords[-1][0] - min_block_spacing,
+                    chosen_coords[-1][1],
+                )
+            else:
+                current_selected_pos = (
+                    chosen_coords[-1][0] + min_block_spacing,
+                    chosen_coords[-1][1],
+                )
+            # Reset flag for arrow key press
+            arrow_pressed = False
+        else:
+            current_selected_pos = pygame.mouse.get_pos()
 
-        my_rect = define_rect(current_mouse_pos, block_width)
+        my_rect = define_rect(current_selected_pos, block_width)
         my_rect = shift_rect_to_divisible_pos(
             my_rect, draw_image_x, draw_image_y, min_block_spacing, image_boundary
         )
@@ -519,12 +560,9 @@ while running:
         # Check to make sure the current shifted position is not the same as
         # the last, and that it's not in chosen coords. If all criteria met,
         # draw the new path square
-        if not shifted_coords_history:
-            shifted_coords_history.append(my_rect.center)
-        elif (
-            my_rect.center != shifted_coords_history[-1]
-            and my_rect.center not in chosen_coords
-        ):
+        if (
+            not shifted_coords_history or my_rect.center != shifted_coords_history[-1]
+        ) and my_rect.center not in chosen_coords:
             shifted_coords_history.append(my_rect.center)
             if rect_within_boundary(
                 my_rect,
