@@ -2,6 +2,7 @@ import os
 import ast
 import time
 import pygame
+from collections import deque
 from utils.exceptions import CustomError
 from rect.draw import draw_maze
 from asset.sprite import Sprite
@@ -118,6 +119,8 @@ maze_draw = True
 create_sprites = False
 rungame = False
 paused = False
+s_pressed = False
+f_pressed = False
 need_pause_text = False
 running = True
 while running:
@@ -130,6 +133,8 @@ while running:
             if event.key == pygame.K_PAUSE:
                 paused = not paused
                 need_pause_text = True
+            if event.key == pygame.K_f:
+                f_pressed = True
         elif event.type == pygame.KEYUP:
             if event.key == pygame.K_s and s_pressed:
                 # Skip to next level
@@ -139,6 +144,8 @@ while running:
                     level_index += 1
                 maze_draw = True
                 s_pressed = False
+            if event.key == pygame.K_f and f_pressed:
+                f_pressed = False
 
     # Draw maze and instructions on screen
     if maze_draw:
@@ -238,7 +245,7 @@ while running:
         )
 
         # Move player to respawn if they were destroyed
-        if player.isdestroyed():
+        if player.is_destroyed():
             start_to_respawn = (
                 asset_coord.get("R")[0] - asset_coord.get("S")[0],
                 asset_coord.get("R")[1] - asset_coord.get("S")[1],
@@ -252,9 +259,11 @@ while running:
         ]
         player.draw(draw_image_x, draw_image_y, image_boundary, screen)
 
-        # Update screen and set flags
+        # Update screen, set flags and variables
         pygame.display.flip()
         game_time = pygame.time.Clock()
+        projectile = []
+        blast = []
         rungame = True
         exit_found = False
         create_sprites = False
@@ -268,7 +277,7 @@ while running:
         screen.fill(black)
         screen.blit(area_surf, (0, 0))
 
-        # Player movement input
+        # Player movement and attack input
         keys = pygame.key.get_pressed()
         if keys[pygame.K_l]:
             player.set_direction(1, 0)  # right
@@ -281,9 +290,61 @@ while running:
         elif keys[pygame.K_SPACE]:
             player.set_direction(0, 0)  # stop
 
-        # Move player
+        # Player fire command (only one projectile at a time)
+        if f_pressed and not projectile:
+            f_pressed = False
+            projectile_direction = (1, 0)
+            if player.direction != (0, 0):
+                projectile_direction = player.direction
+            # Initialize projectile at front end of player
+            player_location = player.get_center_position()
+            projectile_location = (
+                player_location[0] + projectile_direction[0] * int(block_width / 4),
+                player_location[1] + projectile_direction[1] * int(block_width / 4),
+            )
+            projectile = Sprite(
+                "projectile",
+                images["projectile"],
+                projectile_location,
+                pixels_per_second * 2,
+                True,
+                int(block_width / 4),
+                int(block_width / 4),
+            )
+            projectile.set_direction(projectile_direction[0], projectile_direction[1])
+
+        # Move player and projectiles
         if not exit_found:
             player.perform_move(maze_grid, game_dt)
+            if projectile:
+                projectile.perform_move(maze_grid, game_dt)
+
+        # Remove projectiles which have stopped moving, and draw blast
+        if projectile and not projectile.can_move(
+            projectile_direction[0], projectile_direction[1], maze_grid
+        ):
+            projectile_location = projectile.get_center_position()
+            projectile = []
+            blast = Sprite(
+                "blast",
+                images["projectile_hit_01"],
+                projectile_location,
+                0,
+                False,
+                int(block_width / 4),
+                int(block_width / 4),
+            )
+            blast_images = [
+                images["projectile_hit_02"],
+                images["projectile_hit_03"],
+                images["projectile_hit_02"],
+                images["projectile_hit_01"],
+            ]
+            blast_delays = [0.05, 0.1, 0.15, 0.2]
+            blast.animate(blast_images, blast_delays)
+        elif blast and not blast.is_animating():
+            # Remove blasts which have finished animating
+            blast = []
 
         # Detect item collision and delete those items
         delete_items = []
@@ -330,11 +391,15 @@ while running:
                     exit.animate(door_images, door_delays)
                     exit_closing = True
 
-        # Draw item and player sprites
+        # Draw item, projectile, blast, and player sprites
         [
             items[item].draw(draw_image_x, draw_image_y, image_boundary, screen)
             for item in items
         ]
+        if projectile:
+            projectile.draw(draw_image_x, draw_image_y, image_boundary, screen)
+        if blast:
+            blast.draw(draw_image_x, draw_image_y, image_boundary, screen)
         player.draw(draw_image_x, draw_image_y, image_boundary, screen)
 
         # Draw exit again overtop player if door closing

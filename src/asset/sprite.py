@@ -27,6 +27,7 @@ class Sprite:
         self.motion_vector_history = deque(maxlen=1)
         self.animation_start_time = None
         self.animation_sequence = []
+        self.animation_index = 0
 
     # Method to perform shifting to desired location
     def shift(self, delta_x, delta_y):
@@ -169,11 +170,13 @@ class Sprite:
         image_rect.move_ip(draw_image_x + image_boundary, draw_image_y + image_boundary)
         screen.blit(draw_image, image_rect)
         # If animation finished, reset variables
-        if self.animation_start_time:
-            last_frame = self.animation_sequence[-1]
-            if last_frame.get("image") == self.image:
-                self.animation_sequence = []
-                self.animation_start_time = None
+        if (
+            self.animation_start_time
+            and self.animation_index == len(self.animation_sequence) - 1
+        ):
+            self.animation_sequence = []
+            self.animation_index = 0
+            self.animation_start_time = None
 
     # Method to initialize animation
     def animate(self, images, time_delays):
@@ -185,9 +188,10 @@ class Sprite:
     # Method to get correct animation frame at a given time
     def get_image(self):
         if self.animation_sequence:
-            for frame in self.animation_sequence:
+            for index, frame in enumerate(self.animation_sequence):
                 if time.time() - self.animation_start_time >= frame.get("time_delay"):
                     self.image = frame.get("image")
+                    self.animation_index = index
 
     # Set sprite commanded direction to input values
     def set_direction(self, x_direction, y_direction):
@@ -214,11 +218,11 @@ class Sprite:
         self.speed = new_speed
 
     # Set flag to destroy asset
-    def destroy(self, destroy_images):
+    def destroy(self):
         self.destroyed = True
 
     # Return flag of whether sprite destroyed
-    def isdestroyed(self):
+    def is_destroyed(self):
         return self.destroyed
 
     # Return rect containing path box
@@ -236,3 +240,7 @@ class Sprite:
     # Return whether animation is occuring
     def is_animating(self):
         return bool(self.animation_start_time)
+
+    # Return motion vector
+    def get_motion_vector(self):
+        return self.motion_vector
