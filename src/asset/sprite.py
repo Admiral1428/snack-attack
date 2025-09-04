@@ -1,4 +1,5 @@
 import pygame
+import time
 from collections import deque
 from rect.utils import define_rect
 
@@ -23,6 +24,8 @@ class Sprite:
         self.desired_direction = ()
         self.motion_vector = (0, 0)
         self.motion_vector_history = deque(maxlen = 1)
+        self.animation_start_time = None
+        self.animation_sequence = []
 
     # Method to move the asset
     def move(self, delta_x, delta_y, maze_grid):
@@ -138,6 +141,7 @@ class Sprite:
 
     # Method to draw onto screen at its position, with screen offsets as needed
     def draw(self, draw_image_x, draw_image_y, image_boundary, screen):
+        self.get_image()
         draw_image = self.image
         if self.rotation_angle != 0:
             draw_image = pygame.transform.rotate(draw_image, self.rotation_angle)
@@ -147,6 +151,26 @@ class Sprite:
         image_rect.center = self.center_position
         image_rect.move_ip(draw_image_x + image_boundary, draw_image_y + image_boundary)
         screen.blit(draw_image, image_rect)
+        # If animation finished, reset variables
+        if self.animation_start_time:
+            last_frame = self.animation_sequence[-1]
+            if last_frame.get("image") == self.image:
+                self.animation_sequence = []
+                self.animation_start_time = None
+
+    # Method to initialize animation
+    def animate(self, images, time_delays):
+        keys = ["image", "time_delay"]
+        for image, time_delay in zip(images, time_delays):
+            self.animation_sequence.append(dict(zip(keys, [image, time_delay])))
+        self.animation_start_time = time.time()
+
+    # Method to get correct animation frame at a given time
+    def get_image(self):
+        if self.animation_sequence:
+            for frame in self.animation_sequence:
+                if time.time() - self.animation_start_time >= frame.get("time_delay"):
+                    self.image = frame.get("image")
 
     # Set sprite commanded direction to input values
     def set_direction(self, x_direction, y_direction):
@@ -175,3 +199,11 @@ class Sprite:
     # Return rect containing hit box
     def get_hit_rect(self):
         return self.hitbox_rect
+    
+    # Return center position coordinates
+    def get_center_position(self):
+        return self.center_position
+    
+    # Return whether animation is occuring
+    def is_animating(self):
+        return bool(self.animation_start_time)

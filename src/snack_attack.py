@@ -205,6 +205,9 @@ while running:
         # Set flags
         create_sprites = True
         exit_created = False
+        exit_found = False
+        exit_opening = False
+        exit_closing = False
         maze_draw = False
 
     # Create Sprite objects
@@ -254,14 +257,18 @@ while running:
         )
 
         # Draw items, player, update screen, and set flags
-        [items[item].draw(draw_image_x, draw_image_y, image_boundary, screen) for item in items]
+        [
+            items[item].draw(draw_image_x, draw_image_y, image_boundary, screen)
+            for item in items
+        ]
         player.draw(draw_image_x, draw_image_y, image_boundary, screen)
 
         # Update screen and set flags
         pygame.display.flip()
         rungame = True
+        exit_found = False
         create_sprites = False
-        
+
     # Primary game loop
     elif rungame and not paused:
         # Clear screen and re-draw background
@@ -285,7 +292,8 @@ while running:
         time.sleep(level_speed_delay)
 
         # Move player
-        player.perform_move(maze_grid)
+        if not exit_found:
+            player.perform_move(maze_grid)
 
         # Detect item collision and delete those items
         delete_items = []
@@ -294,8 +302,6 @@ while running:
                 delete_items.append(item)
         for item in delete_items:
             del items[item]
-
-        # Detect 
 
         # If no more items, draw exit
         if not items and not exit_created:
@@ -310,22 +316,53 @@ while running:
             )
             exit_created = True
 
-        # Draw item and player sprites
-        [items[item].draw(draw_image_x, draw_image_y, image_boundary, screen) for item in items]
-        player.draw(draw_image_x, draw_image_y, image_boundary, screen)
-        
+        # Draw exit and animate
         if exit_created:
             exit.draw(draw_image_x, draw_image_y, image_boundary, screen)
-            # Proceed to next level if collision with exit
-            if player.collide_check(exit):
-                if level_index >= len(levels) - 1:
-                    level_index = 0
-                else:
-                    level_index += 1
-                maze_draw = True
+            # Proceed to next level if same location as exit
+            if player.get_center_position() == exit.get_center_position():
+                exit_found = True
+                if not exit_opening:
+                    # Animate door opening
+                    door_images = [
+                        images["door"],
+                        images["door_open_01"],
+                        images["door_open_02"],
+                        images["door_open_03"],
+                        images["door_open_04"],
+                    ]
+                    door_delays = [0.2, 0.4, 0.6, 0.8, 1.0]
+                    exit.animate(door_images, door_delays)
+                    exit_opening = True
+                elif exit_opening and not exit_closing and not exit.is_animating():
+                    # Animate door closing
+                    door_images.reverse()
+                    exit.animate(door_images, door_delays)
+                    exit_closing = True
+
+        # Draw item and player sprites
+        [
+            items[item].draw(draw_image_x, draw_image_y, image_boundary, screen)
+            for item in items
+        ]
+        player.draw(draw_image_x, draw_image_y, image_boundary, screen)
+
+        # Draw exit again overtop player if door closing
+        if exit_closing:
+            exit.draw(draw_image_x, draw_image_y, image_boundary, screen)
 
         # Update screen
         pygame.display.flip()
+
+        # Change to the next level if door closing animation finished
+        if exit_closing and not exit.is_animating():
+            time.sleep(0.5)
+            if level_index >= len(levels) - 1:
+                level_index = 0
+            else:
+                level_index += 1
+            maze_draw = True
+
     elif paused:
         if need_pause_text:
             text_surface = font.render(
