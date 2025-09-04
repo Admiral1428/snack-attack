@@ -107,8 +107,8 @@ if not levels:
 else:
     level_index = 0
 
-# Level speed definitions for time delay
-level_speed_timing = {"slow": 0.004, "medium": 0.003, "fast": 0.002, "frantic": 0.001}
+# Level speed definitions (pixels per second for moving sprites)
+level_speeds = {"slow": 90, "medium": 120, "fast": 180, "frantic": 270}
 
 # Update initial display
 pygame.display.update()
@@ -176,11 +176,11 @@ while running:
         # Save relevant metadata
         level_speed = maze_metadata.get("level_speed")
 
-        # Assign appropriate delay for level speed, defaulting to slow
-        if level_speed in level_speed_timing.keys():
-            level_speed_delay = level_speed_timing.get(level_speed)
+        # Assign appropriate sprite speed, defaulting to slow
+        if level_speed in level_speeds.keys():
+            pixels_per_second = level_speeds.get(level_speed)
         else:
-            level_speed_delay = level_speed_timing.get("slow")
+            pixels_per_second = level_speeds.get("slow")
 
         # Save maze asset coordinates into a single dictionary and check validity
         # of asset coordinates with error handling
@@ -212,7 +212,6 @@ while running:
 
     # Create Sprite objects
     elif create_sprites:
-
         # Initialize items
         items = {}
         for key, value in asset_coord.items():
@@ -221,7 +220,7 @@ while running:
                     key,
                     images[item_image_defs.get(key)],
                     asset_coord.get(key),
-                    100,
+                    0,
                     False,
                     int(block_width / 4),
                     block_width,
@@ -232,7 +231,7 @@ while running:
             "player",
             images["combine"],
             asset_coord.get("S"),
-            100,
+            pixels_per_second,
             True,
             int(block_width / 4),
             block_width,
@@ -244,17 +243,7 @@ while running:
                 asset_coord.get("R")[0] - asset_coord.get("S")[0],
                 asset_coord.get("R")[1] - asset_coord.get("S")[1],
             )
-            player.move(start_to_respawn, maze_grid)
-
-        player = Sprite(
-            "player",
-            images["combine"],
-            asset_coord.get("S"),
-            100,
-            True,
-            int(block_width / 4),
-            block_width,
-        )
+            player.shift(start_to_respawn)
 
         # Draw items, player, update screen, and set flags
         [
@@ -265,12 +254,16 @@ while running:
 
         # Update screen and set flags
         pygame.display.flip()
+        game_time = pygame.time.Clock()
         rungame = True
         exit_found = False
         create_sprites = False
 
     # Primary game loop
     elif rungame and not paused:
+        # Get game time delta for determining whether to move sprites
+        game_dt = game_time.tick() / 1000
+
         # Clear screen and re-draw background
         screen.fill(black)
         screen.blit(area_surf, (0, 0))
@@ -288,12 +281,9 @@ while running:
         elif keys[pygame.K_SPACE]:
             player.set_direction(0, 0)  # stop
 
-        # Set delay to achieve level speed
-        time.sleep(level_speed_delay)
-
         # Move player
         if not exit_found:
-            player.perform_move(maze_grid)
+            player.perform_move(maze_grid, game_dt)
 
         # Detect item collision and delete those items
         delete_items = []
@@ -309,7 +299,7 @@ while running:
                 "H",
                 images["door"],
                 asset_coord.get("H"),
-                100,
+                0,
                 False,
                 int(block_width / 4),
                 block_width,
