@@ -26,7 +26,6 @@ class Sprite:
         self.motion_vector_history = deque(maxlen = 1)
         self.animation_start_time = None
         self.animation_sequence = []
-        self.animation_occuring = False
 
     # Method to move the asset
     def move(self, delta_x, delta_y, maze_grid):
