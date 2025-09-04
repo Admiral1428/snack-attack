@@ -1,5 +1,6 @@
 import pygame
 import time
+import random
 from collections import deque
 from rect.utils import define_rect
 
@@ -14,13 +15,21 @@ class Sprite:
         self.center_position = center_position
         self.speed = speed  # pixels per second
         self.can_rotate = can_rotate
-        self.hitbox_rect = define_rect(center_position, hitbox_width)
-        self.path_rect = define_rect(center_position, path_width)
+        self.hitbox_width = hitbox_width
+        self.path_width = path_width
 
+        # Additional attributes
+        self.spawn = False
+        self._initialize_attributes()
+
+    # Initialization of more attributes
+    def _initialize_attributes(self):
+        self.hitbox_rect = define_rect(self.center_position, self.hitbox_width)
+        self.path_rect = define_rect(self.center_position, self.path_width)
         self.rotation_angle = 0  # + counterclockwise
         self.mirror = False
         self.destroyed = False
-        self.center_pos_decimal = center_position
+        self.center_pos_decimal = self.center_position
         self.direction = (0, 0)
         self.desired_direction = ()
         self.motion_vector = (0, 0)
@@ -28,6 +37,11 @@ class Sprite:
         self.animation_start_time = None
         self.animation_sequence = []
         self.animation_index = 0
+
+    # Method to perform reset to absolulte location
+    def reset(self, x, y):
+        self.center_position = (x, y)
+        self._initialize_attributes()
 
     # Method to perform shifting to desired location
     def shift(self, delta_x, delta_y):
@@ -57,7 +71,7 @@ class Sprite:
             # Set new motion vector
             self.motion_vector = (delta_x, delta_y)
             # Determine new orientation if motion vector changed
-            if orientation_check:
+            if self.can_rotate and orientation_check:
                 self.set_orientation()
 
     # Method to check if the asset can move within maze
@@ -197,6 +211,62 @@ class Sprite:
     def set_direction(self, x_direction, y_direction):
         self.desired_direction = (x_direction, y_direction)
 
+    # Basic "random" navigation direction set for enemies
+    def set_navigate_direction(self, second_sprite: "Sprite", maze_grid):
+        dirs = [(1, 0), (-1, 0), (0, -1), (0, 1)]  # Right, Left, Up, Down
+        aligned_second_sprite = False
+        # If aligned vertically with second sprite
+        if self.center_position[1] == second_sprite.center_position[1]:
+            # Move towards second sprite either right or left
+            aligned_second_sprite = True
+            if self.path_rect.right < second_sprite.path_rect.left:
+                self.set_direction(dirs[0][0], dirs[0][1])
+            elif self.path_rect.left > second_sprite.path_rect.right:
+                self.set_direction(dirs[1][0], dirs[1][1])
+        # If aligned horizontally with second sprite
+        elif self.center_position[0] == second_sprite.center_position[0]:
+            # Move towards second sprite either up or down
+            aligned_second_sprite = True
+            if self.path_rect.top > second_sprite.path_rect.bottom:
+                self.set_direction(dirs[2][0], dirs[2][1])
+            elif self.path_rect.bottom < second_sprite.path_rect.top:
+                self.set_direction(dirs[3][0], dirs[3][1])
+        # Pick a random direction if current direction is 0, 0 or unable to move,
+        # and eliminate a 180 deg flip
+        elif (
+            self.desired_direction == (0, 0)
+            or not self.desired_direction
+            or not self.can_move(
+                self.desired_direction[0], self.desired_direction[1], maze_grid
+            )
+        ):
+            if self.desired_direction:
+                target_indices = [
+                    index
+                    for index, dir in enumerate(dirs)
+                    if dir != self.desired_direction
+                    and dir
+                    != (-1 * self.desired_direction[0], -1 * self.desired_direction[1])
+                ]
+                rand_direction = dirs[random.choice(target_indices)]
+            else:
+                rand_direction = dirs[random.randint(0, 3)]
+            self.set_direction(rand_direction[0], rand_direction[1])
+        # Pick a random direction if current direction possible, and others
+        # possible too which aren't 180 deg flip
+        elif self.can_move(
+            self.desired_direction[0], self.desired_direction[1], maze_grid
+        ):
+            target_indices = [
+                index
+                for index, dir in enumerate(dirs)
+                if dir
+                != (-1 * self.desired_direction[0], -1 * self.desired_direction[1])
+                and self.can_move(dir[0], dir[1], maze_grid)
+            ]
+            rand_direction = dirs[random.choice(target_indices)]
+            self.set_direction(rand_direction[0], rand_direction[1])
+
     # Perform collision check with another sprite
     def collide_check(self, second_sprite: "Sprite"):
         return self.hitbox_rect.colliderect(second_sprite.hitbox_rect)
@@ -218,12 +288,20 @@ class Sprite:
         self.speed = new_speed
 
     # Set flag to destroy asset
-    def destroy(self):
-        self.destroyed = True
+    def toggle_destroy(self):
+        self.destroyed = not self.destroyed
 
     # Return flag of whether sprite destroyed
     def is_destroyed(self):
         return self.destroyed
+
+    # Set flag to prevent respawn
+    def toggle_spawn(self):
+        self.spawn = not self.spawn
+
+    # Return flag of whether sprite respawn active
+    def can_spawn(self):
+        return self.spawn
 
     # Return rect containing path box
     def get_path_rect(self):

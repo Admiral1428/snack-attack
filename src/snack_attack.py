@@ -110,6 +110,8 @@ else:
 
 # Level speed definitions (pixels per second for moving sprites)
 level_speeds = {"slow": 90, "medium": 120, "fast": 180, "frantic": 270}
+# Enemy spawn frequency speed definitions (seconds between spawns)
+spawn_speeds = {"slow": 1, "medium": 0.75, "fast": 0.5, "frantic": 0.25}
 
 # Update initial display
 pygame.display.update()
@@ -182,12 +184,21 @@ while running:
 
         # Save relevant metadata
         level_speed = maze_metadata.get("level_speed")
+        num_corn = ast.literal_eval(maze_metadata.get("corn_quantity"))
+        num_tomato = ast.literal_eval(maze_metadata.get("tomato_quantity"))
+        num_pumpkin = ast.literal_eval(maze_metadata.get("pumpkin_quantity"))
 
         # Assign appropriate sprite speed, defaulting to slow
         if level_speed in level_speeds.keys():
             pixels_per_second = level_speeds.get(level_speed)
         else:
             pixels_per_second = level_speeds.get("slow")
+
+        # Assign appropriate enemy respawn speed, defaulting to slow
+        if level_speed in spawn_speeds.keys():
+            seconds_to_spawn = spawn_speeds.get(level_speed)
+        else:
+            seconds_to_spawn = spawn_speeds.get("slow")
 
         # Save maze asset coordinates into a single dictionary and check validity
         # of asset coordinates with error handling
@@ -244,38 +255,112 @@ while running:
             block_width,
         )
 
-        # Move player to respawn if they were destroyed
-        if player.is_destroyed():
-            start_to_respawn = (
-                asset_coord.get("R")[0] - asset_coord.get("S")[0],
-                asset_coord.get("R")[1] - asset_coord.get("S")[1],
+        # Initialize enemies
+        corns = []
+        tomatoes = []
+        pumpkins = []
+        for i in range(num_corn):
+            corns.append(
+                Sprite(
+                    "corn",
+                    images["corn"],
+                    asset_coord.get("E"),
+                    pixels_per_second,
+                    False,
+                    int(block_width / 2),
+                    block_width,
+                )
             )
-            player.shift(start_to_respawn)
-
-        # Draw items, player, update screen, and set flags
-        [
-            items[item].draw(draw_image_x, draw_image_y, image_boundary, screen)
-            for item in items
-        ]
-        player.draw(draw_image_x, draw_image_y, image_boundary, screen)
+        for i in range(num_tomato):
+            tomatoes.append(
+                Sprite(
+                    "tomato",
+                    images["tomato"],
+                    asset_coord.get("E"),
+                    pixels_per_second,
+                    False,
+                    int(block_width / 2),
+                    block_width,
+                )
+            )
+        for i in range(num_pumpkin):
+            pumpkins.append(
+                Sprite(
+                    "pumpkin",
+                    images["pumpkin"],
+                    asset_coord.get("E"),
+                    pixels_per_second,
+                    False,
+                    int(block_width / 2),
+                    block_width,
+                )
+            )
 
         # Update screen, set flags and variables
-        pygame.display.flip()
         game_time = pygame.time.Clock()
+        start_time = time.time()
         projectile = []
         blast = []
         rungame = True
         exit_found = False
         create_sprites = False
+        spawned_enemies = 0
 
     # Primary game loop
     elif rungame and not paused:
         # Get game time delta for determining whether to move sprites
         game_dt = game_time.tick() / 1000
 
+        # Get alive enemies
+        alive_corns = [corn for corn in corns if not corn.is_destroyed()]
+        alive_tomatoes = [tomato for tomato in tomatoes if not tomato.is_destroyed()]
+        alive_pumpkins = [pumpkin for pumpkin in pumpkins if not pumpkin.is_destroyed()]
+
+        # Move player and enemies to respawn if player collided with enemy
+        if player.can_spawn():
+            player.reset(asset_coord.get("R")[0], asset_coord.get("R")[1])
+            player.toggle_spawn()
+            start_time = time.time()
+            spawned_enemies = 0
+            for corn in alive_corns:
+                corn.reset(asset_coord.get("E")[0], asset_coord.get("E")[1])
+                if corn.can_spawn():
+                    corn.toggle_spawn()
+            for tomato in alive_tomatoes:
+                tomato.reset(asset_coord.get("E")[0], asset_coord.get("E")[1])
+                if tomato.can_spawn():
+                    tomato.toggle_spawn()
+            for pumpkin in alive_pumpkins:
+                pumpkin.reset(asset_coord.get("E")[0], asset_coord.get("E")[1])
+                if pumpkin.can_spawn():
+                    pumpkin.toggle_spawn()
+
         # Clear screen and re-draw background
         screen.fill(black)
         screen.blit(area_surf, (0, 0))
+
+        # Determine whether to spawn enemies based on time and their state
+        respawn_time = time.time() - start_time
+        if respawn_time >= (spawned_enemies + 1) * seconds_to_spawn:
+            spawned_enemies += 1
+            if spawned_enemies <= len(alive_corns):
+                index = spawned_enemies - 1
+                if not alive_corns[index].is_destroyed():
+                    alive_corns[index].toggle_spawn()
+            elif spawned_enemies - len(alive_corns) <= len(alive_tomatoes):
+                index = spawned_enemies - len(alive_corns) - 1
+                if not alive_tomatoes[index].is_destroyed():
+                    alive_tomatoes[index].toggle_spawn()
+            elif spawned_enemies - len(alive_corns) - len(alive_tomatoes) <= len(
+                alive_pumpkins
+            ):
+                index = spawned_enemies - len(alive_corns) - len(alive_tomatoes) - 1
+                if not alive_pumpkins[index].is_destroyed():
+                    alive_pumpkins[index].toggle_spawn()
+
+        active_corns = [corn for corn in alive_corns if corn.can_spawn()]
+        active_tomatoes = [tomato for tomato in alive_tomatoes if tomato.can_spawn()]
+        active_pumpkins = [pumpkin for pumpkin in alive_pumpkins if pumpkin.can_spawn()]
 
         # Player movement and attack input
         keys = pygame.key.get_pressed()
@@ -313,15 +398,27 @@ while running:
             )
             projectile.set_direction(projectile_direction[0], projectile_direction[1])
 
-        # Move player and projectiles
+        # Move player, projectiles, and enemies
         if not exit_found:
             player.perform_move(maze_grid, game_dt)
             if projectile:
                 projectile.perform_move(maze_grid, game_dt)
+            for corn in active_corns:
+                corn.set_navigate_direction(player, maze_grid)
+                corn.perform_move(maze_grid, game_dt)
+            for tomato in active_tomatoes:
+                tomato.set_navigate_direction(player, maze_grid)
+                tomato.perform_move(maze_grid, game_dt)
+            for pumpkin in active_pumpkins:
+                pumpkin.set_navigate_direction(player, maze_grid)
+                pumpkin.perform_move(maze_grid, game_dt)
 
-        # Remove projectiles which have stopped moving, and draw blast
-        if projectile and not projectile.can_move(
-            projectile_direction[0], projectile_direction[1], maze_grid
+        # Remove projectiles which hit an enemy or a wall, then draw blast
+        if projectile and (
+            projectile.is_destroyed()
+            or not projectile.can_move(
+                projectile_direction[0], projectile_direction[1], maze_grid
+            )
         ):
             projectile_location = projectile.get_center_position()
             projectile = []
@@ -345,6 +442,68 @@ while running:
         elif blast and not blast.is_animating():
             # Remove blasts which have finished animating
             blast = []
+
+        # Detect corn collision with player and projectile
+        for corn in alive_corns:
+            if player.collide_check(corn):
+                player.toggle_spawn()
+                break
+            elif (
+                projectile
+                and not projectile.is_destroyed()
+                and projectile.collide_check(corn)
+            ):
+                projectile.toggle_destroy()
+                corn.toggle_destroy()
+                corn_images = [
+                    images["corn_flat_01"],
+                    images["corn_flat_02"],
+                    images["corn_flat_03"],
+                    images["corn_flat_04"],
+                    images["empty"],
+                ]
+                corn_delays = [0.2, 0.25, 0.3, 0.35, 0.4]
+                corn.animate(corn_images, corn_delays)
+
+        # Detect tomato collision with player and projectile
+        for tomato in alive_tomatoes:
+            if player.collide_check(tomato) and not tomato.is_destroyed():
+                player.toggle_spawn()
+                break
+            elif (
+                projectile
+                and not projectile.is_destroyed()
+                and projectile.collide_check(tomato)
+            ):
+                projectile.toggle_destroy()
+                tomato.toggle_destroy()
+                tomato_images = [
+                    images["tomato_flat_01"],
+                    images["tomato_flat_02"],
+                    images["tomato_flat_03"],
+                    images["tomato_flat_04"],
+                    images["empty"],
+                ]
+                tomato_delays = [0.2, 0.25, 0.3, 0.35, 0.4]
+                tomato.animate(tomato_images, tomato_delays)
+
+        # Detect pumpkin collision with player and projectile
+        for pumpkin in alive_pumpkins:
+            if player.collide_check(pumpkin):
+                player.toggle_spawn()
+                break
+            elif (
+                projectile
+                and not projectile.is_destroyed()
+                and projectile.collide_check(pumpkin)
+            ):
+                projectile.toggle_destroy()
+                pumpkin_images = [
+                    images["pumpkin_fire"],
+                    images["pumpkin"],
+                ]
+                pumpkin_delays = [0.1, 0.4]
+                pumpkin.animate(pumpkin_images, pumpkin_delays)
 
         # Detect item collision and delete those items
         delete_items = []
@@ -391,13 +550,28 @@ while running:
                     exit.animate(door_images, door_delays)
                     exit_closing = True
 
-        # Draw item, projectile, blast, and player sprites
+        # Draw item, projectile, blast, player, and enemy sprites
         [
             items[item].draw(draw_image_x, draw_image_y, image_boundary, screen)
             for item in items
         ]
         if projectile:
             projectile.draw(draw_image_x, draw_image_y, image_boundary, screen)
+        [
+            corn.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            for corn in corns
+            if corn.can_spawn()
+        ]
+        [
+            tomato.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            for tomato in tomatoes
+            if tomato.can_spawn()
+        ]
+        [
+            pumpkin.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            for pumpkin in pumpkins
+            if pumpkin.can_spawn()
+        ]
         if blast:
             blast.draw(draw_image_x, draw_image_y, image_boundary, screen)
         player.draw(draw_image_x, draw_image_y, image_boundary, screen)
@@ -408,6 +582,10 @@ while running:
 
         # Update screen
         pygame.display.flip()
+
+        # Brief pause once the player has collided with an enemy
+        if player.can_spawn():
+            time.sleep(0.5)
 
         # Change to the next level if door closing animation finished
         if exit_closing and not exit.is_animating():
