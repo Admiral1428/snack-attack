@@ -1,5 +1,6 @@
 import os
 import pygame
+import time
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from rect.utils import define_rect, shift_rect_to_divisible_pos
@@ -204,6 +205,7 @@ asset_coords = []
 mouse_left_held = False
 mouse_right_click = False
 arrow_pressed = False
+arrow_index = -1
 maze_draw = True
 running = True
 while running:
@@ -529,26 +531,25 @@ while running:
                 )
             elif current_arrow == pygame.K_UP:
                 current_selected_pos = (
-                    chosen_coords[-1][0],
-                    chosen_coords[-1][1] - min_block_spacing,
+                    chosen_coords[arrow_index][0],
+                    chosen_coords[arrow_index][1] - min_block_spacing,
                 )
             elif current_arrow == pygame.K_DOWN:
                 current_selected_pos = (
-                    chosen_coords[-1][0],
-                    chosen_coords[-1][1] + min_block_spacing,
+                    chosen_coords[arrow_index][0],
+                    chosen_coords[arrow_index][1] + min_block_spacing,
                 )
             elif current_arrow == pygame.K_LEFT:
                 current_selected_pos = (
-                    chosen_coords[-1][0] - min_block_spacing,
-                    chosen_coords[-1][1],
+                    chosen_coords[arrow_index][0] - min_block_spacing,
+                    chosen_coords[arrow_index][1],
                 )
             else:
                 current_selected_pos = (
-                    chosen_coords[-1][0] + min_block_spacing,
-                    chosen_coords[-1][1],
+                    chosen_coords[arrow_index][0] + min_block_spacing,
+                    chosen_coords[arrow_index][1],
                 )
-            # Reset flag for arrow key press
-            arrow_pressed = False
+            #
         else:
             current_selected_pos = pygame.mouse.get_pos()
 
@@ -556,6 +557,23 @@ while running:
         my_rect = shift_rect_to_divisible_pos(
             my_rect, draw_image_x, draw_image_y, min_block_spacing, image_boundary
         )
+
+        # If chosen coordinate from arrow keys is already in chosen coordinates, 
+        # save that space so that user can backtrack. 
+        # Subsequently highlight the block with flashing so that they know where
+        # they are for context.
+        if arrow_pressed and my_rect.center in chosen_coords:
+            arrow_index = chosen_coords.index(my_rect.center)
+            for i in range (3):
+                draw_square(my_rect, screen, white, dirty_rects)
+                time.sleep(1/30)
+                draw_square(my_rect, screen, black, dirty_rects)
+                time.sleep(1/30)
+        else:
+            arrow_index = -1
+
+        # Reset flag for arrow key press
+        arrow_pressed = False
 
         # Check to make sure the current shifted position is not the same as
         # the last, and that it's not in chosen coords. If all criteria met,
