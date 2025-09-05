@@ -19,6 +19,9 @@ class Sprite:
         self.path_width = path_width
 
         # Additional attributes
+        self.orig_image = image
+        self.move_dist = 0
+        self.facing = "right"
         self.spawn = False
         self._initialize_attributes()
 
@@ -29,11 +32,9 @@ class Sprite:
         self.rotation_angle = 0  # + counterclockwise
         self.mirror = False
         self.destroyed = False
-        self.center_pos_decimal = self.center_position
         self.direction = (0, 0)
         self.desired_direction = ()
         self.motion_vector = (0, 0)
-        self.motion_vector_history = deque(maxlen=1)
         self.animation_start_time = None
         self.animation_sequence = []
         self.animation_index = 0
@@ -51,25 +52,26 @@ class Sprite:
             self.center_position[0] + delta_x,
             self.center_position[1] + delta_y,
         )
-        # Set the partial position equal to the new position
-        self.center_pos_decimal = (self.center_position[0], self.center_position[1])
 
     # Method to move the asset with associated motion vector and orientation operations
     def move(self, delta_x, delta_y):
         if delta_x != 0 or delta_y != 0:
             # Initialize flag, only to be used if motion vector changes
             orientation_check = False
-            # Store current motion vector if new one is different
-            if not self.motion_vector_history or self.motion_vector != (
-                delta_x,
-                delta_y,
+            # Determine signs of deltas
+            delta_signs = [0, 0]
+            delta_signs[0] = 1 if delta_x > 0 else (-1 if delta_x < 0 else 0)
+            delta_signs[1] = 1 if delta_y > 0 else (-1 if delta_y < 0 else 0)
+            # Check orientation if new motion is different
+            if (
+                self.motion_vector[0] != delta_signs[0]
+                or self.motion_vector[1] != delta_signs[1]
             ):
-                self.motion_vector_history.append(self.motion_vector)
                 orientation_check = True
             # Shift Rect objects and position
             self.shift(delta_x, delta_y)
             # Set new motion vector
-            self.motion_vector = (delta_x, delta_y)
+            self.motion_vector = (delta_signs[0], delta_signs[1])
             # Determine new orientation if motion vector changed
             if self.can_rotate and orientation_check:
                 self.set_orientation()
@@ -97,6 +99,17 @@ class Sprite:
 
     # Determine and perform move based on direction, move check, time, and speed
     def perform_move(self, maze_grid, game_dt):
+        # Determine how far item has traveled in the game_dt game tick
+        self.move_dist += self.speed * game_dt
+
+        # If threshold of 1 pixel reached, do move
+        if self.move_dist >= 1:
+            delta_dist = int(self.move_dist)
+            self.move_dist = 0
+            do_move = True
+        elif self.move_dist < 1:
+            do_move = False
+
         # If nonzero direction was commanded and is possible, move
         if self.desired_direction and self.can_move(
             self.desired_direction[0], self.desired_direction[1], maze_grid
@@ -108,14 +121,27 @@ class Sprite:
                 self.move(0, 0)
             else:
                 self.direction = (self.desired_direction[0], self.desired_direction[1])
-                # Perform move if the new position rounds to the nearest pixel
-                if self.shift_threshold_met(game_dt):
-                    self.move(self.direction[0], self.direction[1])
+                if do_move:
+                    # Move delta_dist, or max possible if that is too far
+                    for i in range(delta_dist, 0, -1):
+                        max_dist = i
+                        if self.can_move(
+                            i * self.direction[0], i * self.direction[1], maze_grid
+                        ):
+                            break
+                    self.move(
+                        max_dist * self.direction[0], max_dist * self.direction[1]
+                    )
         # If current direction is possible, keep moving that way
-        elif self.can_move(self.direction[0], self.direction[1], maze_grid):
-            # Perform move if the new position rounds to the nearest pixel
-            if self.shift_threshold_met(game_dt):
-                self.move(self.direction[0], self.direction[1])
+        elif do_move and self.can_move(self.direction[0], self.direction[1], maze_grid):
+            # Move delta_dist, or max possible if that is too far
+            for i in range(delta_dist, 0, -1):
+                max_dist = i
+                if self.can_move(
+                    i * self.direction[0], i * self.direction[1], maze_grid
+                ):
+                    break
+            self.move(max_dist * self.direction[0], max_dist * self.direction[1])
         else:
             # No movement possible, so update motion vector with 0, 0
             self.motion_vector = (0, 0)
@@ -126,50 +152,40 @@ class Sprite:
         if self.motion_vector[0] > 0:
             self.rotation_angle = 0
             self.mirror = False
+            self.facing = "right"
         # Moving left
         elif self.motion_vector[0] < 0:
             self.rotation_angle = 0
             self.mirror = True
-        # Moving up, where previous motion was right
-        elif self.motion_vector[1] < 0 and self.motion_vector_history[-1][0] > 0:
+            self.facing = "left"
+        # Moving up, where previously facing right, or wheels to the right
+        elif self.motion_vector[1] < 0 and (
+            self.facing == "right" or self.facing == "wheels_right"
+        ):
             self.rotation_angle = 90  # rotate ccw
             self.mirror = False
-        # Moving up, where previous motion was left
-        elif self.motion_vector[1] < 0 and self.motion_vector_history[-1][0] < 0:
+            self.facing = "wheels_right"
+        # Moving up, where previously facing left, or wheels to the left
+        elif self.motion_vector[1] < 0 and (
+            self.facing == "left" or self.facing == "wheels_left"
+        ):
             self.rotation_angle = 90  # rotate ccw
             self.mirror = True  # then mirror horizontally
-        # Moving up, where previous motion was down
-        elif self.motion_vector[1] < 0 and self.motion_vector_history[-1][1] > 0:
-            if self.mirror:
-                self.rotation_angle = 90  # rotate ccw
-                self.mirror = False
-            else:
-                self.rotation_angle = 90  # rotate ccw
-                self.mirror = True  # then mirror horizontally
-        # Covering remaining cases for moving up
-        elif self.motion_vector[1] < 0:
-            self.rotation_angle = 90  # rotate ccw
-            self.mirror = False
-        # Moving down, where previous motion was right
-        elif self.motion_vector[1] > 0 and self.motion_vector_history[-1][0] > 0:
+            self.facing = "wheels_left"
+        # Moving down, where previously facing right, or wheels to the left
+        elif self.motion_vector[1] > 0 and (
+            self.facing == "right" or self.facing == "wheels_left"
+        ):
             self.rotation_angle = -90  # rotate cw
             self.mirror = False
-        # Moving down, where previous motion was left
-        elif self.motion_vector[1] > 0 and self.motion_vector_history[-1][0] < 0:
+            self.facing = "wheels_left"
+        # Moving down, where previously facing left, or wheels to the right
+        elif self.motion_vector[1] > 0 and (
+            self.facing == "left" or self.facing == "wheels_right"
+        ):
             self.rotation_angle = -90  # rotate cw
             self.mirror = True  # then mirror horizontally
-        # Moving down, where previous motion was up
-        elif self.motion_vector[1] > 0 and self.motion_vector_history[-1][1] < 0:
-            if self.mirror:
-                self.rotation_angle = -90  # rotate cw
-                self.mirror = False
-            else:
-                self.rotation_angle = -90  # rotate cw
-                self.mirror = True  # then mirror horizontally
-        # Covering remaining cases for moving down
-        elif self.motion_vector[1] > 0:
-            self.rotation_angle = -90  # rotate cw
-            self.mirror = False
+            self.facing = "wheels_right"
 
     # Method to draw onto screen at its position, with screen offsets as needed
     def draw(self, draw_image_x, draw_image_y, image_boundary, screen):
@@ -212,8 +228,11 @@ class Sprite:
         self.desired_direction = (x_direction, y_direction)
 
     # Basic "random" navigation direction set for enemies
-    def set_navigate_direction(self, second_sprite: "Sprite", maze_grid):
-        dirs = [(1, 0), (-1, 0), (0, -1), (0, 1)]  # Right, Left, Up, Down
+    def set_navigate_direction(self, second_sprite: "Sprite", maze_grid, game_dt):
+        # Determine how far item has traveled in the game_dt game tick
+        delta_dist = int(round(self.speed * game_dt, 0))
+        # Possible directions: Right, Left, Up, Down
+        dirs = [(1, 0), (-1, 0), (0, -1), (0, 1)]
         aligned_second_sprite = False
         # If aligned vertically with second sprite
         if self.center_position[1] == second_sprite.center_position[1]:
@@ -237,7 +256,9 @@ class Sprite:
             self.desired_direction == (0, 0)
             or not self.desired_direction
             or not self.can_move(
-                self.desired_direction[0], self.desired_direction[1], maze_grid
+                delta_dist * self.desired_direction[0],
+                delta_dist * self.desired_direction[1],
+                maze_grid,
             )
         ):
             if self.desired_direction:
@@ -255,14 +276,16 @@ class Sprite:
         # Pick a random direction if current direction possible, and others
         # possible too which aren't 180 deg flip
         elif self.can_move(
-            self.desired_direction[0], self.desired_direction[1], maze_grid
+            delta_dist * self.desired_direction[0],
+            delta_dist * self.desired_direction[1],
+            maze_grid,
         ):
             target_indices = [
                 index
                 for index, dir in enumerate(dirs)
                 if dir
                 != (-1 * self.desired_direction[0], -1 * self.desired_direction[1])
-                and self.can_move(dir[0], dir[1], maze_grid)
+                and self.can_move(delta_dist * dir[0], delta_dist * dir[1], maze_grid)
             ]
             rand_direction = dirs[random.choice(target_indices)]
             self.set_direction(rand_direction[0], rand_direction[1])
@@ -271,21 +294,16 @@ class Sprite:
     def collide_check(self, second_sprite: "Sprite"):
         return self.hitbox_rect.colliderect(second_sprite.hitbox_rect)
 
-    # Check if the fractional shift performed warrants shifting the block by a pixel
-    def shift_threshold_met(self, game_dt):
-        delta_dist = self.speed * game_dt
-        self.center_pos_decimal = (
-            self.center_pos_decimal[0] + delta_dist * self.direction[0],
-            self.center_pos_decimal[1] + delta_dist * self.direction[1],
-        )
-        return (
-            abs(self.center_pos_decimal[0] - self.center_position[0]) > 0.5
-            or abs(self.center_pos_decimal[1] - self.center_position[1]) > 0.5
-        )
-
     # Set sprite speed to input value
     def set_speed(self, new_speed):
         self.speed = new_speed
+
+    # Set sprite image to original, and reset animation
+    def reset_image(self):
+        self.image = self.orig_image
+        self.animation_sequence = []
+        self.animation_index = 0
+        self.animation_start_time = None
 
     # Set flag to destroy asset
     def toggle_destroy(self):
