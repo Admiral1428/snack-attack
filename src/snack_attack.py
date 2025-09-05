@@ -70,8 +70,21 @@ image_boundary *= scale_factor
 # Fill background with black color
 screen.fill(black)
 
+# Display level info text
+info_strings = [
+    "Level: " "",
+    "Score: ",
+    "Lives: ",
+]
+
+# Game over text
+endgame_strings = [
+    "GAME OVER",
+    "Thank you for playing! :)",
+]
+
 # Display instruction text
-text_strings = [
+how_to_strings = [
     "I = Move up",
     "K = Move down",
     "J = Move left",
@@ -109,7 +122,7 @@ else:
     level_index = 0
 
 # Level speed definitions (pixels per second for moving sprites)
-level_speeds = {"slow": 90, "medium": 120, "fast": 180, "frantic": 270}
+level_speeds = {"slow": 180, "medium": 240, "fast": 300, "frantic": 360}
 # Enemy spawn frequency speed definitions (seconds between spawns)
 spawn_speeds = {"slow": 1, "medium": 0.75, "fast": 0.5, "frantic": 0.25}
 
@@ -124,6 +137,8 @@ paused = False
 s_pressed = False
 f_pressed = False
 need_pause_text = False
+score = 0
+lives = 5
 running = True
 while running:
     for event in pygame.event.get():
@@ -133,8 +148,17 @@ while running:
             if event.key == pygame.K_s:
                 s_pressed = True
             if event.key == pygame.K_PAUSE:
+                # Adjust game loop start timer based on pause behavior
+                if not paused:
+                    pause_start = time.time()
+                else:
+                    pause_end = time.time()
+                    start_time += pause_end - pause_start
+                # Pause or unpause, and reset flag for printing text
                 paused = not paused
                 need_pause_text = True
+                # Update game clock at end of pause
+                game_time.tick(1000) / 1000
             if event.key == pygame.K_f:
                 f_pressed = True
         elif event.type == pygame.KEYUP:
@@ -160,10 +184,18 @@ while running:
         screen.fill(black)
         pygame.display.flip()
 
+        # Print level info
+        for row, text_line in enumerate(info_strings):
+            text_surface = font.render(text_line, True, white)
+            screen.blit(text_surface, (1140, 50 + row * 50))
+        text_surface = font.render(levels[level_index].get("folder"), True, white)
+        screen.blit(text_surface, (1250, 50))
+
         # Print instructions and draw maze
-        for row, text_line in enumerate(text_strings):
+        for row, text_line in enumerate(how_to_strings):
             text_surface = font.render(text_line, True, white)
             screen.blit(text_surface, (1140, 350 + row * 50))
+
         draw_maze(
             draw_image_x,
             draw_image_y,
@@ -240,7 +272,7 @@ while running:
                     asset_coord.get(key),
                     0,
                     False,
-                    int(block_width / 4),
+                    int(block_width / 8),
                     block_width,
                 )
 
@@ -251,7 +283,7 @@ while running:
             asset_coord.get("S"),
             pixels_per_second,
             True,
-            int(block_width / 4),
+            int(block_width / 2),
             block_width,
         )
 
@@ -267,7 +299,7 @@ while running:
                     asset_coord.get("E"),
                     pixels_per_second,
                     False,
-                    int(block_width / 2),
+                    int(block_width * 0.8),
                     block_width,
                 )
             )
@@ -279,7 +311,7 @@ while running:
                     asset_coord.get("E"),
                     pixels_per_second,
                     False,
-                    int(block_width / 2),
+                    int(block_width * 0.7),
                     block_width,
                 )
             )
@@ -291,7 +323,7 @@ while running:
                     asset_coord.get("E"),
                     pixels_per_second,
                     False,
-                    int(block_width / 2),
+                    int(block_width * 0.6),
                     block_width,
                 )
             )
@@ -308,8 +340,8 @@ while running:
 
     # Primary game loop
     elif rungame and not paused:
-        # Get game time delta for determining whether to move sprites
-        game_dt = game_time.tick() / 1000
+        # Get game time delta for determining whether to move sprites. Cap at 1000 fps
+        game_dt = game_time.tick(1000) / 1000
 
         # Get alive enemies
         alive_corns = [corn for corn in corns if not corn.is_destroyed()]
@@ -334,10 +366,20 @@ while running:
                 pumpkin.reset(asset_coord.get("E")[0], asset_coord.get("E")[1])
                 if pumpkin.can_spawn():
                     pumpkin.toggle_spawn()
+                    pumpkin.reset_image()
+            projectile = []
+            blast = []
 
         # Clear screen and re-draw background
         screen.fill(black)
         screen.blit(area_surf, (0, 0))
+
+        # Print score and lives
+        text_surface = font.render(str(score), True, white)
+        screen.blit(text_surface, (1250, 100))
+        lives_color = red if lives < 2 else (orange if lives < 5 else green)
+        text_surface = font.render(str(lives), True, lives_color)
+        screen.blit(text_surface, (1250, 150))
 
         # Determine whether to spawn enemies based on time and their state
         respawn_time = time.time() - start_time
@@ -376,7 +418,7 @@ while running:
             player.set_direction(0, 0)  # stop
 
         # Player fire command (only one projectile at a time)
-        if f_pressed and not projectile:
+        if f_pressed and not (blast or projectile):
             f_pressed = False
             projectile_direction = (1, 0)
             if player.direction != (0, 0):
@@ -404,20 +446,40 @@ while running:
             if projectile:
                 projectile.perform_move(maze_grid, game_dt)
             for corn in active_corns:
-                corn.set_navigate_direction(player, maze_grid)
+                corn.set_navigate_direction(player, maze_grid, game_dt)
                 corn.perform_move(maze_grid, game_dt)
             for tomato in active_tomatoes:
-                tomato.set_navigate_direction(player, maze_grid)
+                tomato.set_navigate_direction(player, maze_grid, game_dt)
                 tomato.perform_move(maze_grid, game_dt)
             for pumpkin in active_pumpkins:
-                pumpkin.set_navigate_direction(player, maze_grid)
+                pumpkin.set_navigate_direction(player, maze_grid, game_dt)
                 pumpkin.perform_move(maze_grid, game_dt)
+        else:
+            # If player not coincident with exit and moving towards it,
+            # allow movement to get closer
+            player_to_exit = (
+                exit.center_position[0] - player.center_position[0],
+                exit.center_position[1] - player.center_position[1],
+            )
+            if (
+                (player_to_exit[0] > 0 and player.direction[0] > 0)
+                or (player_to_exit[0] < 0 and player.direction[0] < 0)
+                or (player_to_exit[1] > 0 and player.direction[1] > 0)
+                or (player_to_exit[1] < 0 and player.direction[1] < 0)
+            ):
+                player.perform_move(maze_grid, game_dt)
+
+        # Determine how far projectile has traveled in the game_dt game tick
+        if projectile:
+            delta_dist = round(projectile.speed * game_dt, 0)
 
         # Remove projectiles which hit an enemy or a wall, then draw blast
         if projectile and (
             projectile.is_destroyed()
             or not projectile.can_move(
-                projectile_direction[0], projectile_direction[1], maze_grid
+                delta_dist * projectile_direction[0],
+                delta_dist * projectile_direction[1],
+                maze_grid,
             )
         ):
             projectile_location = projectile.get_center_position()
@@ -446,6 +508,7 @@ while running:
         # Detect corn collision with player and projectile
         for corn in alive_corns:
             if player.collide_check(corn):
+                lives -= 1
                 player.toggle_spawn()
                 break
             elif (
@@ -453,6 +516,7 @@ while running:
                 and not projectile.is_destroyed()
                 and projectile.collide_check(corn)
             ):
+                score += 50
                 projectile.toggle_destroy()
                 corn.toggle_destroy()
                 corn_images = [
@@ -462,12 +526,13 @@ while running:
                     images["corn_flat_04"],
                     images["empty"],
                 ]
-                corn_delays = [0.2, 0.25, 0.3, 0.35, 0.4]
+                corn_delays = [0.1, 0.15, 0.2, 0.25, 0.3]
                 corn.animate(corn_images, corn_delays)
 
         # Detect tomato collision with player and projectile
         for tomato in alive_tomatoes:
             if player.collide_check(tomato) and not tomato.is_destroyed():
+                lives -= 1
                 player.toggle_spawn()
                 break
             elif (
@@ -475,6 +540,7 @@ while running:
                 and not projectile.is_destroyed()
                 and projectile.collide_check(tomato)
             ):
+                score += 100
                 projectile.toggle_destroy()
                 tomato.toggle_destroy()
                 tomato_images = [
@@ -484,12 +550,13 @@ while running:
                     images["tomato_flat_04"],
                     images["empty"],
                 ]
-                tomato_delays = [0.2, 0.25, 0.3, 0.35, 0.4]
+                tomato_delays = [0.1, 0.15, 0.2, 0.25, 0.3]
                 tomato.animate(tomato_images, tomato_delays)
 
         # Detect pumpkin collision with player and projectile
         for pumpkin in alive_pumpkins:
             if player.collide_check(pumpkin):
+                lives -= 1
                 player.toggle_spawn()
                 break
             elif (
@@ -509,19 +576,32 @@ while running:
         delete_items = []
         for item in items:
             if player.collide_check(items[item]):
+                score += 200
                 delete_items.append(item)
+
+        # If no more enemies, remove remaining items
+        enemy_collection = corns + tomatoes + pumpkins
+        all_destroyed = all(enemy.is_destroyed() for enemy in enemy_collection)
+        if all_destroyed:
+            for item in items:
+                delete_items.append(item)
+
+        # Delete appropriate items
         for item in delete_items:
             del items[item]
 
         # If no more items, draw exit
         if not items and not exit_created:
+            # Reward player with extra life if all items collected
+            if not all_destroyed:
+                lives += 1
             exit = Sprite(
                 "H",
                 images["door"],
                 asset_coord.get("H"),
                 0,
                 False,
-                int(block_width / 4),
+                int(block_width / 24),
                 block_width,
             )
             exit_created = True
@@ -529,8 +609,8 @@ while running:
         # Draw exit and animate
         if exit_created:
             exit.draw(draw_image_x, draw_image_y, image_boundary, screen)
-            # Proceed to next level if same location as exit
-            if player.get_center_position() == exit.get_center_position():
+            # Proceed to next level if collision with exit
+            if player.collide_check(exit):
                 exit_found = True
                 if not exit_opening:
                     # Animate door opening
@@ -595,6 +675,18 @@ while running:
             else:
                 level_index += 1
             maze_draw = True
+
+        # Restart game if lives expended
+        if lives < 0:
+            for row, text_line in enumerate(endgame_strings):
+                text_surface = font.render(text_line, True, yellow)
+                screen.blit(text_surface, (1140, 225 + row * 50))
+            level_index = 0
+            score = 0
+            lives = 5
+            maze_draw = True
+            pygame.display.flip()
+            time.sleep(3)
 
     elif paused:
         if need_pause_text:

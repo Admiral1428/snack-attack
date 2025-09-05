@@ -529,27 +529,31 @@ while running:
                     draw_image_x + image_boundary + int(block_width / 2),
                     draw_image_y + image_boundary + int(block_width / 2),
                 )
-            elif current_arrow == pygame.K_UP:
-                current_selected_pos = (
-                    chosen_coords[arrow_index][0],
-                    chosen_coords[arrow_index][1] - min_block_spacing,
-                )
-            elif current_arrow == pygame.K_DOWN:
-                current_selected_pos = (
-                    chosen_coords[arrow_index][0],
-                    chosen_coords[arrow_index][1] + min_block_spacing,
-                )
-            elif current_arrow == pygame.K_LEFT:
-                current_selected_pos = (
-                    chosen_coords[arrow_index][0] - min_block_spacing,
-                    chosen_coords[arrow_index][1],
-                )
-            else:
-                current_selected_pos = (
-                    chosen_coords[arrow_index][0] + min_block_spacing,
-                    chosen_coords[arrow_index][1],
-                )
-            #
+            else: 
+                try:
+                    if current_arrow == pygame.K_UP:
+                        current_selected_pos = (
+                            chosen_coords[arrow_index][0],
+                            chosen_coords[arrow_index][1] - min_block_spacing,
+                        )
+                    elif current_arrow == pygame.K_DOWN:
+                        current_selected_pos = (
+                            chosen_coords[arrow_index][0],
+                            chosen_coords[arrow_index][1] + min_block_spacing,
+                        )
+                    elif current_arrow == pygame.K_LEFT:
+                        current_selected_pos = (
+                            chosen_coords[arrow_index][0] - min_block_spacing,
+                            chosen_coords[arrow_index][1],
+                        )
+                    else:
+                        current_selected_pos = (
+                            chosen_coords[arrow_index][0] + min_block_spacing,
+                            chosen_coords[arrow_index][1],
+                        )
+                except:
+                    # Catching case where index may be out of bounds
+                    current_selected_pos = chosen_coords[-1]
         else:
             current_selected_pos = pygame.mouse.get_pos()
 

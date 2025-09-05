@@ -49,6 +49,7 @@ def get_levels(directory_path):
                         "metadata": metadata_filepath,
                         "path": path_filepath,
                         "screenshot": screenshot_filepath,
+                        "folder": folder,
                     }
                 )
             else:
