@@ -227,68 +227,72 @@ class Sprite:
     def set_direction(self, x_direction, y_direction):
         self.desired_direction = (x_direction, y_direction)
 
-    # Basic "random" navigation direction set for enemies
+    # Move towards player if direction possible,
+    # otherwise random navigation, only backtracking if needed
     def set_navigate_direction(self, second_sprite: "Sprite", maze_grid, game_dt):
         # Determine how far item has traveled in the game_dt game tick
-        delta_dist = int(round(self.speed * game_dt, 0))
-        # Possible directions: Right, Left, Up, Down
-        dirs = [(1, 0), (-1, 0), (0, -1), (0, 1)]
-        aligned_second_sprite = False
-        # If aligned vertically with second sprite
-        if self.center_position[1] == second_sprite.center_position[1]:
-            # Move towards second sprite either right or left
-            aligned_second_sprite = True
-            if self.path_rect.right < second_sprite.path_rect.left:
-                self.set_direction(dirs[0][0], dirs[0][1])
-            elif self.path_rect.left > second_sprite.path_rect.right:
-                self.set_direction(dirs[1][0], dirs[1][1])
-        # If aligned horizontally with second sprite
-        elif self.center_position[0] == second_sprite.center_position[0]:
-            # Move towards second sprite either up or down
-            aligned_second_sprite = True
-            if self.path_rect.top > second_sprite.path_rect.bottom:
-                self.set_direction(dirs[2][0], dirs[2][1])
-            elif self.path_rect.bottom < second_sprite.path_rect.top:
-                self.set_direction(dirs[3][0], dirs[3][1])
-        # Pick a random direction if current direction is 0, 0 or unable to move,
-        # and eliminate a 180 deg flip
-        elif (
-            self.desired_direction == (0, 0)
-            or not self.desired_direction
-            or not self.can_move(
-                delta_dist * self.desired_direction[0],
-                delta_dist * self.desired_direction[1],
-                maze_grid,
-            )
-        ):
-            if self.desired_direction:
-                target_indices = [
-                    index
-                    for index, dir in enumerate(dirs)
-                    if dir != self.desired_direction
-                    and dir
-                    != (-1 * self.desired_direction[0], -1 * self.desired_direction[1])
-                ]
-                rand_direction = dirs[random.choice(target_indices)]
-            else:
+        if self.move_dist + self.speed * game_dt >= 1:
+            # Possible directions: Right, Left, Up, Down
+            dirs = [(1, 0), (-1, 0), (0, -1), (0, 1)]
+
+            aligned_second_sprite = False
+            # If aligned vertically with second sprite
+            if self.center_position[1] == second_sprite.center_position[1]:
+                # Move towards second sprite either right or left
+                aligned_second_sprite = True
+                if self.path_rect.right < second_sprite.path_rect.left:
+                    self.set_direction(dirs[0][0], dirs[0][1])
+                elif self.path_rect.left > second_sprite.path_rect.right:
+                    self.set_direction(dirs[1][0], dirs[1][1])
+
+            # If aligned horizontally with second sprite
+            elif self.center_position[0] == second_sprite.center_position[0]:
+                # Move towards second sprite either up or down
+                aligned_second_sprite = True
+                if self.path_rect.top > second_sprite.path_rect.bottom:
+                    self.set_direction(dirs[2][0], dirs[2][1])
+                elif self.path_rect.bottom < second_sprite.path_rect.top:
+                    self.set_direction(dirs[3][0], dirs[3][1])
+
+            # If current direction is 0, 0, choose a random direction
+            if self.desired_direction == (0, 0) or not self.desired_direction:
                 rand_direction = dirs[random.randint(0, 3)]
-            self.set_direction(rand_direction[0], rand_direction[1])
-        # Pick a random direction if current direction possible, and others
-        # possible too which aren't 180 deg flip
-        elif self.can_move(
-            delta_dist * self.desired_direction[0],
-            delta_dist * self.desired_direction[1],
-            maze_grid,
-        ):
-            target_indices = [
-                index
-                for index, dir in enumerate(dirs)
-                if dir
-                != (-1 * self.desired_direction[0], -1 * self.desired_direction[1])
-                and self.can_move(delta_dist * dir[0], delta_dist * dir[1], maze_grid)
+                self.set_direction(rand_direction[0], rand_direction[1])
+
+            # Check current direction, then orthogonal directions, then reverse
+            reverse_direction = (-1 * self.desired_direction[0], -1 * self.desired_direction[1])
+            orthog_direction_1 = (self.desired_direction[1], self.desired_direction[0])
+            orthog_direction_2 = (-1 * self.desired_direction[1], -1 * self.desired_direction[0])
+
+            directions_to_check = [
+                self.desired_direction,
+                orthog_direction_1,
+                orthog_direction_2,
+                reverse_direction,
             ]
-            rand_direction = dirs[random.choice(target_indices)]
-            self.set_direction(rand_direction[0], rand_direction[1])
+            valid_indices = []
+            for index, direction in enumerate(directions_to_check):
+                if self.can_move(
+                    direction[0], direction[1], maze_grid
+                ):
+                    valid_indices.append(index)
+
+            # If no directions are possible or only reverse possible, these take precedent.
+            # Otherwise, pick a random direction of the remaining possibilities if not 
+            # aligned with the second sprite (go in player direction if it's possible).
+            if not valid_indices:
+                self.set_direction(0, 0)
+            elif valid_indices == [3]:
+                self.set_direction(directions_to_check[3][0], directions_to_check[3][1])
+            elif aligned_second_sprite and 0 in valid_indices:
+                pass
+            else:
+                non_reverse_dirs = [i for i in valid_indices if i != 3]
+                chosen_index = random.choice(non_reverse_dirs)
+                self.set_direction(
+                    directions_to_check[chosen_index][0],
+                    directions_to_check[chosen_index][1],
+                )
 
     # Perform collision check with another sprite
     def collide_check(self, second_sprite: "Sprite"):
