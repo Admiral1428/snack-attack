@@ -342,6 +342,7 @@ while running:
     elif rungame and not paused:
         # Get game time delta for determining whether to move sprites. Cap at 1000 fps
         game_dt = game_time.tick(1000) / 1000
+        # game_dt = 1/1000 (used during debugging)
 
         # Get alive enemies
         alive_corns = [corn for corn in corns if not corn.is_destroyed()]
