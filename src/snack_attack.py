@@ -85,16 +85,55 @@ endgame_strings = [
 
 # Display instruction text
 how_to_strings = [
-    "I = Move up",
-    "K = Move down",
-    "J = Move left",
-    "L = Move right",
-    "Space = Stop movement",
-    "F = Fire weapon",
     "************************",
     "Pause = Pause game",
-    "S = Skip level",
+    "F1 = Skip level",
+    "F2 = Change controls",
 ]
+
+# Controls option and text
+controls_option = 0
+controls_text = []
+controls_text.append(
+    [
+        "",
+        "Hold W = Move up",
+        "Hold S = Move down",
+        "Hold A = Move left",
+        "Hold D = Move right",
+        "Press Enter = Fire weapon",
+    ]
+)
+controls_text.append(
+    [
+        "",
+        "Hold I = Move up",
+        "Hold K = Move down",
+        "Hold J = Move left",
+        "Hold L = Move right",
+        "Press F = Fire weapon",
+    ]
+)
+controls_text.append(
+    [
+        "Press Space = Stop",
+        "Press W = Move up",
+        "Press S = Move down",
+        "Press A = Move left",
+        "Press D = Move right",
+        "Press Enter = Fire weapon",
+    ]
+)
+controls_text.append(
+    [
+        "Press Space = Stop",
+        "Press I = Move up",
+        "Press K = Move down",
+        "Press J = Move left",
+        "Press L = Move right",
+        "Press F = Fire weapon",
+    ]
+)
 
 # Load enemy images and scale them
 images = import_image_dir("../assets/sprites/")
@@ -134,9 +173,11 @@ maze_draw = True
 create_sprites = False
 rungame = False
 paused = False
-s_pressed = False
-f_pressed = False
+f1_pressed = False
+fire_pressed = False
 need_pause_text = False
+controls_option = 0
+key_order = deque(maxlen=2)
 score = 0
 lives = 5
 running = True
@@ -145,8 +186,15 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_s:
-                s_pressed = True
+            if event.key == pygame.K_F1:
+                f1_pressed = True
+            if event.key == pygame.K_F2:
+                key_order = deque(maxlen=2)
+                if controls_option == len(controls_text) - 1:
+                    controls_option = 0
+                else:
+                    controls_option += 1
+                f2_pressed = True
             if event.key == pygame.K_PAUSE:
                 # Adjust game loop start timer based on pause behavior
                 if not paused:
@@ -159,19 +207,35 @@ while running:
                 need_pause_text = True
                 # Update game clock at end of pause
                 game_time.tick(1000) / 1000
-            if event.key == pygame.K_f:
-                f_pressed = True
+            if (
+                controls_option == 0
+                and event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d]
+            ) or (
+                controls_option == 1
+                and event.key in [pygame.K_i, pygame.K_k, pygame.K_j, pygame.K_l]
+            ):
+                key_order.append(event.key)
+            if (controls_option in [0, 2] and event.key == pygame.K_RETURN) or (
+                controls_option in [1, 3] and event.key == pygame.K_f
+            ):
+                fire_pressed = True
         elif event.type == pygame.KEYUP:
-            if event.key == pygame.K_s and s_pressed:
+            if event.key == pygame.K_F1 and f1_pressed:
                 # Skip to next level
                 if level_index >= len(levels) - 1:
                     level_index = 0
                 else:
                     level_index += 1
                 maze_draw = True
-                s_pressed = False
-            if event.key == pygame.K_f and f_pressed:
-                f_pressed = False
+                f1_pressed = False
+            if event.key == pygame.K_F2 and f2_pressed:
+                f2_pressed = False
+            if (
+                (controls_option in [0, 2] and event.key == pygame.K_RETURN)
+                or (controls_option in [1, 3] and event.key == pygame.K_f)
+                and fire_pressed
+            ):
+                fire_pressed = False
 
     # Draw maze and instructions on screen
     if maze_draw:
@@ -191,8 +255,13 @@ while running:
         text_surface = font.render(levels[level_index].get("folder"), True, white)
         screen.blit(text_surface, (1250, 50))
 
-        # Print instructions and draw maze
+        # Print instructions
         for row, text_line in enumerate(how_to_strings):
+            text_surface = font.render(text_line, True, white)
+            screen.blit(text_surface, (1140, 650 + row * 50))
+
+        # Print controls
+        for row, text_line in enumerate(controls_text[controls_option]):
             text_surface = font.render(text_line, True, white)
             screen.blit(text_surface, (1140, 350 + row * 50))
 
@@ -340,10 +409,6 @@ while running:
 
     # Primary game loop
     elif rungame and not paused:
-        # Get game time delta for determining whether to move sprites. Cap at 1000 fps
-        game_dt = game_time.tick(1000) / 1000
-        # game_dt = 1/1000 (used during debugging)
-
         # Get alive enemies
         alive_corns = [corn for corn in corns if not corn.is_destroyed()]
         alive_tomatoes = [tomato for tomato in tomatoes if not tomato.is_destroyed()]
@@ -375,6 +440,13 @@ while running:
         screen.fill(black)
         screen.blit(area_surf, (0, 0))
 
+        # Print controls
+        black_rect = pygame.Rect(1130, 340, 450, 300)
+        screen.fill(black, black_rect)
+        for row, text_line in enumerate(controls_text[controls_option]):
+            text_surface = font.render(text_line, True, white)
+            screen.blit(text_surface, (1140, 350 + row * 50))
+
         # Print score and lives
         text_surface = font.render(str(score), True, white)
         screen.blit(text_surface, (1250, 100))
@@ -405,22 +477,66 @@ while running:
         active_tomatoes = [tomato for tomato in alive_tomatoes if tomato.can_spawn()]
         active_pumpkins = [pumpkin for pumpkin in alive_pumpkins if pumpkin.can_spawn()]
 
-        # Player movement and attack input
+        # Player movement input
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_l]:
-            player.set_direction(1, 0)  # right
-        elif keys[pygame.K_j]:
-            player.set_direction(-1, 0)  # left
-        elif keys[pygame.K_i]:
-            player.set_direction(0, -1)  # up
-        elif keys[pygame.K_k]:
-            player.set_direction(0, 1)  # down
-        elif keys[pygame.K_SPACE]:
-            player.set_direction(0, 0)  # stop
+        if controls_option == 0:
+            if (
+                not keys[pygame.K_d]
+                and not keys[pygame.K_a]
+                and not keys[pygame.K_w]
+                and not keys[pygame.K_s]
+            ):
+                player.set_desired_direction(0, 0)  # stop
+            elif key_order and key_order[-1] == pygame.K_d:
+                player.set_desired_direction(1, 0)  # right
+            elif key_order and key_order[-1] == pygame.K_a:
+                player.set_desired_direction(-1, 0)  # left
+            elif key_order and key_order[-1] == pygame.K_w:
+                player.set_desired_direction(0, -1)  # up
+            elif key_order and key_order[-1] == pygame.K_s:
+                player.set_desired_direction(0, 1)  # down
+        elif controls_option == 1:
+            if (
+                not keys[pygame.K_l]
+                and not keys[pygame.K_j]
+                and not keys[pygame.K_i]
+                and not keys[pygame.K_k]
+            ):
+                player.set_desired_direction(0, 0)  # stop
+            elif key_order and key_order[-1] == pygame.K_l:
+                player.set_desired_direction(1, 0)  # right
+            elif key_order and key_order[-1] == pygame.K_j:
+                player.set_desired_direction(-1, 0)  # left
+            elif key_order and key_order[-1] == pygame.K_i:
+                player.set_desired_direction(0, -1)  # up
+            elif key_order and key_order[-1] == pygame.K_k:
+                player.set_desired_direction(0, 1)  # down
+        elif controls_option == 2:
+            if keys[pygame.K_d]:
+                player.set_desired_direction(1, 0)  # right
+            elif keys[pygame.K_a]:
+                player.set_desired_direction(-1, 0)  # left
+            elif keys[pygame.K_w]:
+                player.set_desired_direction(0, -1)  # up
+            elif keys[pygame.K_s]:
+                player.set_desired_direction(0, 1)  # down
+            elif keys[pygame.K_SPACE]:
+                player.set_desired_direction(0, 0)  # stop
+        else:
+            if keys[pygame.K_l]:
+                player.set_desired_direction(1, 0)  # right
+            elif keys[pygame.K_j]:
+                player.set_desired_direction(-1, 0)  # left
+            elif keys[pygame.K_i]:
+                player.set_desired_direction(0, -1)  # up
+            elif keys[pygame.K_k]:
+                player.set_desired_direction(0, 1)  # down
+            elif keys[pygame.K_SPACE]:
+                player.set_desired_direction(0, 0)  # stop
 
         # Player fire command (only one projectile at a time)
-        if f_pressed and not (blast or projectile):
-            f_pressed = False
+        if fire_pressed and not (blast or projectile):
+            fire_pressed = False
             projectile_direction = (1, 0)
             if player.direction != (0, 0):
                 projectile_direction = player.direction
@@ -439,7 +555,13 @@ while running:
                 int(block_width / 4),
                 int(block_width / 4),
             )
-            projectile.set_direction(projectile_direction[0], projectile_direction[1])
+            projectile.set_desired_direction(
+                projectile_direction[0], projectile_direction[1]
+            )
+
+        # Get game time delta for determining whether to move sprites. Cap at 1000 fps
+        game_dt = game_time.tick(1000) / 1000
+        # game_dt = 1/1000    # (used during debugging)
 
         # Move player, projectiles, and enemies
         if not exit_found:
@@ -667,6 +789,8 @@ while running:
         # Brief pause once the player has collided with an enemy
         if player.can_spawn():
             time.sleep(0.5)
+            # Update game clock at end of delay
+            game_time.tick(1000) / 1000
 
         # Change to the next level if door closing animation finished
         if exit_closing and not exit.is_animating():
