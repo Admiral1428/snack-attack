@@ -23,6 +23,7 @@ class Sprite:
         self.move_dist = 0
         self.facing = "right"
         self.spawn = False
+        self.destroyed = False
         self._initialize_attributes()
 
     # Initialization of more attributes
@@ -31,7 +32,6 @@ class Sprite:
         self.path_rect = define_rect(self.center_position, self.path_width)
         self.rotation_angle = 0  # + counterclockwise
         self.mirror = False
-        self.destroyed = False
         self.direction = (0, 0)
         self.desired_direction = ()
         self.motion_vector = (0, 0)
@@ -402,3 +402,7 @@ class Sprite:
     # Set motion vector
     def set_motion_vector(self, x_direction, y_direction):
         self.motion_vector = (x_direction, y_direction)
+
+    # Return direction
+    def get_direction(self):
+        return self.direction

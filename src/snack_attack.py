@@ -87,8 +87,8 @@ endgame_strings = [
 how_to_strings = [
     "************************",
     "Pause = Pause game",
-    "F1 = Skip level",
-    "F2 = Change controls",
+    "F1 = Change controls",
+    "F10 = Skip Level",
 ]
 
 # Controls option and text
@@ -173,11 +173,13 @@ maze_draw = True
 create_sprites = False
 rungame = False
 paused = False
-f1_pressed = False
+f10_pressed = False
 fire_pressed = False
 need_pause_text = False
+reached_last_level = False
 controls_option = 0
 key_order = deque(maxlen=2)
+direction_order = deque(maxlen=1)
 score = 0
 lives = 5
 running = True
@@ -186,15 +188,15 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_F10:
+                f10_pressed = True
             if event.key == pygame.K_F1:
-                f1_pressed = True
-            if event.key == pygame.K_F2:
                 key_order = deque(maxlen=2)
                 if controls_option == len(controls_text) - 1:
                     controls_option = 0
                 else:
                     controls_option += 1
-                f2_pressed = True
+                f1_pressed = True
             if event.key == pygame.K_PAUSE:
                 # Adjust game loop start timer based on pause behavior
                 if not paused:
@@ -220,16 +222,17 @@ while running:
             ):
                 fire_pressed = True
         elif event.type == pygame.KEYUP:
-            if event.key == pygame.K_F1 and f1_pressed:
+            if event.key == pygame.K_F10 and f10_pressed:
                 # Skip to next level
                 if level_index >= len(levels) - 1:
                     level_index = 0
+                    reached_last_level = True
                 else:
                     level_index += 1
                 maze_draw = True
+                f10_pressed = False
+            if event.key == pygame.K_F1 and f1_pressed:
                 f1_pressed = False
-            if event.key == pygame.K_F2 and f2_pressed:
-                f2_pressed = False
             if (
                 (controls_option in [0, 2] and event.key == pygame.K_RETURN)
                 or (controls_option in [1, 3] and event.key == pygame.K_f)
@@ -252,7 +255,15 @@ while running:
         for row, text_line in enumerate(info_strings):
             text_surface = font.render(text_line, True, white)
             screen.blit(text_surface, (1140, 50 + row * 50))
-        text_surface = font.render(levels[level_index].get("folder"), True, white)
+        # Trim level name
+        folder_name = levels[level_index].get("folder")
+        if len(folder_name) > 8:
+            folder_name = folder_name[:8] + "..."
+        if reached_last_level:
+            text_surface = font.render(folder_name + " (reprise)", True, red)
+        else:
+            text_surface = font.render(folder_name, True, white)
+
         screen.blit(text_surface, (1250, 50))
 
         # Print instructions
@@ -283,11 +294,18 @@ while running:
         temp_surf = screen.subsurface(rect_area)
         area_surf = temp_surf.copy()
 
-        # Save relevant metadata
-        level_speed = maze_metadata.get("level_speed")
-        num_corn = ast.literal_eval(maze_metadata.get("corn_quantity"))
-        num_tomato = ast.literal_eval(maze_metadata.get("tomato_quantity"))
-        num_pumpkin = ast.literal_eval(maze_metadata.get("pumpkin_quantity"))
+        # Hardcode speed and enemy quantity if repeated levels
+        if reached_last_level:
+            level_speed = "frantic"
+            num_corn = 2
+            num_tomato = 4
+            num_pumpkin = 4
+        # Otherwise save relevant metadata
+        else:
+            level_speed = maze_metadata.get("level_speed")
+            num_corn = ast.literal_eval(maze_metadata.get("corn_quantity"))
+            num_tomato = ast.literal_eval(maze_metadata.get("tomato_quantity"))
+            num_pumpkin = ast.literal_eval(maze_metadata.get("pumpkin_quantity"))
 
         # Assign appropriate sprite speed, defaulting to slow
         if level_speed in level_speeds.keys():
@@ -534,6 +552,10 @@ while running:
             elif keys[pygame.K_SPACE]:
                 player.set_desired_direction(0, 0)  # stop
 
+        # Save history of direction for use with exit animation
+        if player.get_direction() != (0, 0):
+            direction_order.append(player.get_direction())
+
         # Player fire command (only one projectile at a time)
         if fire_pressed and not (blast or projectile):
             fire_pressed = False
@@ -590,6 +612,10 @@ while running:
                 or (player_to_exit[1] > 0 and player.direction[1] > 0)
                 or (player_to_exit[1] < 0 and player.direction[1] < 0)
             ):
+                if direction_order and key_order:
+                    player.set_desired_direction(
+                        direction_order[-1][0], direction_order[-1][1]
+                    )
                 player.perform_move(maze_grid, game_dt)
 
         # Determine how far projectile has traveled in the game_dt game tick
@@ -629,7 +655,7 @@ while running:
             blast = []
 
         # Detect corn collision with player and projectile
-        for corn in alive_corns:
+        for corn in active_corns:
             if player.collide_check(corn):
                 lives -= 1
                 player.toggle_spawn()
@@ -642,6 +668,8 @@ while running:
                 score += 50
                 projectile.toggle_destroy()
                 corn.toggle_destroy()
+                spawned_enemies -= 1
+                start_time += seconds_to_spawn
                 corn_images = [
                     images["corn_flat_01"],
                     images["corn_flat_02"],
@@ -653,7 +681,7 @@ while running:
                 corn.animate(corn_images, corn_delays)
 
         # Detect tomato collision with player and projectile
-        for tomato in alive_tomatoes:
+        for tomato in active_tomatoes:
             if player.collide_check(tomato) and not tomato.is_destroyed():
                 lives -= 1
                 player.toggle_spawn()
@@ -666,6 +694,8 @@ while running:
                 score += 100
                 projectile.toggle_destroy()
                 tomato.toggle_destroy()
+                spawned_enemies -= 1
+                start_time += seconds_to_spawn
                 tomato_images = [
                     images["tomato_flat_01"],
                     images["tomato_flat_02"],
@@ -677,7 +707,7 @@ while running:
                 tomato.animate(tomato_images, tomato_delays)
 
         # Detect pumpkin collision with player and projectile
-        for pumpkin in alive_pumpkins:
+        for pumpkin in active_pumpkins:
             if player.collide_check(pumpkin):
                 lives -= 1
                 player.toggle_spawn()
@@ -797,6 +827,7 @@ while running:
             time.sleep(0.5)
             if level_index >= len(levels) - 1:
                 level_index = 0
+                reached_last_level = True
             else:
                 level_index += 1
             maze_draw = True
@@ -807,6 +838,7 @@ while running:
                 text_surface = font.render(text_line, True, yellow)
                 screen.blit(text_surface, (1140, 225 + row * 50))
             level_index = 0
+            reached_last_level = False
             score = 0
             lives = 5
             maze_draw = True
