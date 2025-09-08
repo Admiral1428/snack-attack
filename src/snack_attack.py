@@ -200,6 +200,7 @@ while running:
             if event.key == pygame.K_F10:
                 f10_pressed = True
             if event.key == pygame.K_F1:
+                screen_change = True
                 key_order = deque(maxlen=2)
                 if controls_option == len(controls_text) - 1:
                     controls_option = 0
