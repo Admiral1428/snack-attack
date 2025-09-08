@@ -13,13 +13,14 @@ class Sprite:
         self.name = name
         self.image = image
         self.center_position = center_position
-        self.speed = speed  # pixels per second
+        self.speed = speed  # pixels per game tick
         self.can_rotate = can_rotate
         self.hitbox_width = hitbox_width
         self.path_width = path_width
 
         # Additional attributes
         self.orig_image = image
+        self.got_stopped = False
         self.move_dist = 0
         self.facing = "right"
         self.spawn = False
@@ -79,8 +80,18 @@ class Sprite:
     # Method to check if the sprite can move within maze
     # based on a given delta position
     def can_move(self, delta_x, delta_y, maze_grid):
-        temp_rect = self.path_rect.move(delta_x, delta_y)
-        return Sprite.is_path_clear(temp_rect, maze_grid)
+        # Determine new area created by a shift
+        if delta_x > 0: # Moving right
+            new_area_rect = pygame.Rect(self.path_rect.right, self.path_rect.top, delta_x, self.path_rect.height)
+        elif delta_x < 0:  # Moving left
+            new_area_rect = pygame.Rect(self.path_rect.left + delta_x, self.path_rect.top, -delta_x, self.path_rect.height)
+        elif delta_y > 0:  # Moving down
+            new_area_rect = pygame.Rect(self.path_rect.left, self.path_rect.bottom, self.path_rect.width, delta_y)
+        elif delta_y < 0:  # Moving up
+            new_area_rect = pygame.Rect(self.path_rect.left, self.path_rect.top + delta_y, self.path_rect.width, -delta_y)
+        else:
+            return True
+        return Sprite.is_path_clear(new_area_rect, maze_grid)
 
     # Method to check if a given rect of interest is within path
     # Note that pygame.Rect not inclusive of bottom or right
@@ -158,14 +169,18 @@ class Sprite:
         return ()
 
     # Determine and perform move based on direction, move check, time, and speed
-    def perform_move(self, maze_grid, game_dt):
-        # Determine how far item has traveled in the game_dt game tick
-        self.move_dist += self.speed * game_dt
+    def perform_move(self, maze_grid, game_tick):
+        # Determine how far item has traveled in the game tick
+        self.move_dist += self.speed * game_tick
+
+        # Original position to be checked later
+        orig_position = (self.center_position[0], self.center_position[1])
 
         # If threshold of 1 pixel reached, do move
         if self.move_dist >= 1:
             delta_dist = int(self.move_dist)
-            self.move_dist = 0
+            # self.move_dist = 0
+            self.move_dist -= delta_dist
             do_move = True
         elif self.move_dist < 1:
             do_move = False
@@ -205,6 +220,13 @@ class Sprite:
         else:
             # No movement possible, so update motion vector with 0, 0
             self.set_motion_vector(0, 0)
+            if do_move:
+                self.got_stopped = True
+
+        # Return whether or not movement occured
+        if not do_move or orig_position == (self.center_position[0], self.center_position[1]):
+            return False
+        return True
 
     # Define orientation based on current and previous direction
     def set_orientation(self):
@@ -248,7 +270,7 @@ class Sprite:
             self.facing = "wheels_right"
 
     # Method to draw onto screen at its position, with screen offsets as needed
-    def draw(self, draw_image_x, draw_image_y, image_boundary, screen):
+    def draw(self, draw_image_x, draw_image_y, image_boundary):
         self.get_image()
         draw_image = self.image
         if self.rotation_angle != 0:
@@ -258,7 +280,6 @@ class Sprite:
         image_rect = draw_image.get_rect()
         image_rect.center = self.center_position
         image_rect.move_ip(draw_image_x + image_boundary, draw_image_y + image_boundary)
-        screen.blit(draw_image, image_rect)
         # If animation finished, reset variables
         if (
             self.animation_start_time
@@ -267,6 +288,8 @@ class Sprite:
             self.animation_sequence = []
             self.animation_index = 0
             self.animation_start_time = None
+        # Return data needed for screen blit
+        return draw_image, image_rect
 
     # Method to initialize animation
     def animate(self, images, time_delays):
@@ -293,9 +316,9 @@ class Sprite:
 
     # Move towards player if direction possible,
     # otherwise random navigation, only backtracking if needed
-    def set_navigate_direction(self, second_sprite: "Sprite", maze_grid, game_dt):
-        # Determine how far item has traveled in the game_dt game tick
-        if self.move_dist + self.speed * game_dt >= 1:
+    def set_navigate_direction(self, second_sprite: "Sprite", maze_grid, game_tick):
+        # Determine how far item has traveled in the game tick
+        if self.move_dist + self.speed * game_tick >= 1:
             # Possible directions: Right, Left, Up, Down
             dirs = [(1, 0), (-1, 0), (0, -1), (0, 1)]
 
@@ -406,3 +429,8 @@ class Sprite:
     # Return direction
     def get_direction(self):
         return self.direction
+    
+    # Return whether object stopped, following a valid movemement attempt
+    # amount as calculated with the game tick
+    def is_stopped(self):
+        return self.got_stopped

@@ -160,10 +160,19 @@ if not levels:
 else:
     level_index = 0
 
-# Level speed definitions (pixels per second for moving sprites)
-level_speeds = {"slow": 180, "medium": 240, "fast": 300, "frantic": 360}
+# Level speed definitions (pixels per game tick for moving sprites)
+level_speeds = {"slow": 144, "medium": 180, "fast": 240, "frantic": 360}
 # Enemy spawn frequency speed definitions (seconds between spawns)
 spawn_speeds = {"slow": 1, "medium": 0.75, "fast": 0.5, "frantic": 0.25}
+
+# Set game tick speed to such that movement calculation is no more than one
+# coordinate per tick, and defined speeds have meaningful changes to gameplay
+# i.e., ticks needed to move one coordinate:
+# slow:     144 * 5 = 720
+# medium:   180 * 4 = 720
+# fast:     240 * 3 = 720
+# frantic:  360 * 2 = 720
+game_tick = 1 / 720
 
 # Update initial display
 pygame.display.update()
@@ -191,6 +200,7 @@ while running:
             if event.key == pygame.K_F10:
                 f10_pressed = True
             if event.key == pygame.K_F1:
+                screen_change = True
                 key_order = deque(maxlen=2)
                 if controls_option == len(controls_text) - 1:
                     controls_option = 0
@@ -208,7 +218,7 @@ while running:
                 paused = not paused
                 need_pause_text = True
                 # Update game clock at end of pause
-                game_time.tick(1000) / 1000
+                game_time.tick()
             if (
                 controls_option == 0
                 and event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d]
@@ -422,11 +432,15 @@ while running:
         blast = []
         rungame = True
         exit_found = False
+        screen_change = True
         create_sprites = False
         spawned_enemies = 0
 
     # Primary game loop
     elif rungame and not paused:
+        # Clear images and Rects for screen blit
+        sprite_image_data = []
+
         # Get alive enemies
         alive_corns = [corn for corn in corns if not corn.is_destroyed()]
         alive_tomatoes = [tomato for tomato in tomatoes if not tomato.is_destroyed()]
@@ -434,6 +448,7 @@ while running:
 
         # Move player and enemies to respawn if player collided with enemy
         if player.can_spawn():
+            screen_change = True
             player.reset(asset_coord.get("R")[0], asset_coord.get("R")[1])
             player.toggle_spawn()
             start_time = time.time()
@@ -453,24 +468,6 @@ while running:
                     pumpkin.reset_image()
             projectile = []
             blast = []
-
-        # Clear screen and re-draw background
-        screen.fill(black)
-        screen.blit(area_surf, (0, 0))
-
-        # Print controls
-        black_rect = pygame.Rect(1130, 340, 450, 300)
-        screen.fill(black, black_rect)
-        for row, text_line in enumerate(controls_text[controls_option]):
-            text_surface = font.render(text_line, True, white)
-            screen.blit(text_surface, (1140, 350 + row * 50))
-
-        # Print score and lives
-        text_surface = font.render(str(score), True, white)
-        screen.blit(text_surface, (1250, 100))
-        lives_color = red if lives < 2 else (orange if lives < 5 else green)
-        text_surface = font.render(str(lives), True, lives_color)
-        screen.blit(text_surface, (1250, 150))
 
         # Determine whether to spawn enemies based on time and their state
         respawn_time = time.time() - start_time
@@ -558,6 +555,7 @@ while running:
 
         # Player fire command (only one projectile at a time)
         if fire_pressed and not (blast or projectile):
+            screen_change = True
             fire_pressed = False
             projectile_direction = (1, 0)
             if player.direction != (0, 0):
@@ -580,25 +578,31 @@ while running:
             projectile.set_desired_direction(
                 projectile_direction[0], projectile_direction[1]
             )
-
-        # Get game time delta for determining whether to move sprites. Cap at 1000 fps
-        game_dt = game_time.tick(1000) / 1000
-        # game_dt = 1/1000    # (used during debugging)
+            proj_delta_dist = 0
 
         # Move player, projectiles, and enemies
         if not exit_found:
-            player.perform_move(maze_grid, game_dt)
+            player_move = False
+            proj_move = False
+            corn_move = False
+            tomato_move = False
+            pumpkin_move = False
+
+            player_move = player.perform_move(maze_grid, game_tick)
             if projectile:
-                projectile.perform_move(maze_grid, game_dt)
+                proj_move = projectile.perform_move(maze_grid, game_tick)
             for corn in active_corns:
-                corn.set_navigate_direction(player, maze_grid, game_dt)
-                corn.perform_move(maze_grid, game_dt)
+                corn.set_navigate_direction(player, maze_grid, game_tick)
+                corn_move = corn.perform_move(maze_grid, game_tick)
             for tomato in active_tomatoes:
-                tomato.set_navigate_direction(player, maze_grid, game_dt)
-                tomato.perform_move(maze_grid, game_dt)
+                tomato.set_navigate_direction(player, maze_grid, game_tick)
+                tomato_move = tomato.perform_move(maze_grid, game_tick)
             for pumpkin in active_pumpkins:
-                pumpkin.set_navigate_direction(player, maze_grid, game_dt)
-                pumpkin.perform_move(maze_grid, game_dt)
+                pumpkin.set_navigate_direction(player, maze_grid, game_tick)
+                pumpkin_move = pumpkin.perform_move(maze_grid, game_tick)
+
+            if any([player_move, proj_move, corn_move, tomato_move, pumpkin_move]):
+                screen_change = True
         else:
             # If player not coincident with exit and moving towards it,
             # allow movement to get closer
@@ -616,21 +620,12 @@ while running:
                     player.set_desired_direction(
                         direction_order[-1][0], direction_order[-1][1]
                     )
-                player.perform_move(maze_grid, game_dt)
-
-        # Determine how far projectile has traveled in the game_dt game tick
-        if projectile:
-            delta_dist = round(projectile.speed * game_dt, 0)
+                player.perform_move(maze_grid, game_tick)
+                screen_change = True
 
         # Remove projectiles which hit an enemy or a wall, then draw blast
-        if projectile and (
-            projectile.is_destroyed()
-            or not projectile.can_move(
-                delta_dist * projectile_direction[0],
-                delta_dist * projectile_direction[1],
-                maze_grid,
-            )
-        ):
+        if projectile and (projectile.is_destroyed() or projectile.is_stopped()):
+            screen_change = True
             projectile_location = projectile.get_center_position()
             projectile = []
             blast = Sprite(
@@ -653,6 +648,7 @@ while running:
         elif blast and not blast.is_animating():
             # Remove blasts which have finished animating
             blast = []
+            screen_change = True
 
         # Detect corn collision with player and projectile
         for corn in active_corns:
@@ -665,6 +661,7 @@ while running:
                 and not projectile.is_destroyed()
                 and projectile.collide_check(corn)
             ):
+                screen_change = True
                 score += 50
                 projectile.toggle_destroy()
                 corn.toggle_destroy()
@@ -691,6 +688,7 @@ while running:
                 and not projectile.is_destroyed()
                 and projectile.collide_check(tomato)
             ):
+                screen_change = True
                 score += 100
                 projectile.toggle_destroy()
                 tomato.toggle_destroy()
@@ -717,6 +715,7 @@ while running:
                 and not projectile.is_destroyed()
                 and projectile.collide_check(pumpkin)
             ):
+                screen_change = True
                 projectile.toggle_destroy()
                 pumpkin_images = [
                     images["pumpkin_fire"],
@@ -729,6 +728,7 @@ while running:
         delete_items = []
         for item in items:
             if player.collide_check(items[item]):
+                screen_change = True
                 score += 200
                 delete_items.append(item)
 
@@ -736,6 +736,7 @@ while running:
         enemy_collection = corns + tomatoes + pumpkins
         all_destroyed = all(enemy.is_destroyed() for enemy in enemy_collection)
         if all_destroyed:
+            screen_change = True
             for item in items:
                 delete_items.append(item)
 
@@ -745,6 +746,7 @@ while running:
 
         # If no more items, draw exit
         if not items and not exit_created:
+            screen_change = True
             # Reward player with extra life if all items collected
             if not all_destroyed:
                 lives += 1
@@ -761,9 +763,12 @@ while running:
 
         # Draw exit and animate
         if exit_created:
-            exit.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            sprite_image_data.append(
+                exit.draw(draw_image_x, draw_image_y, image_boundary)
+            )
             # Proceed to next level if collision with exit
             if player.collide_check(exit):
+                screen_change = True
                 exit_found = True
                 if not exit_opening:
                     # Animate door opening
@@ -785,42 +790,91 @@ while running:
 
         # Draw item, projectile, blast, player, and enemy sprites
         [
-            items[item].draw(draw_image_x, draw_image_y, image_boundary, screen)
+            sprite_image_data.append(
+                items[item].draw(draw_image_x, draw_image_y, image_boundary)
+            )
             for item in items
         ]
         if projectile:
-            projectile.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            sprite_image_data.append(
+                projectile.draw(draw_image_x, draw_image_y, image_boundary)
+            )
         [
-            corn.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            sprite_image_data.append(
+                corn.draw(draw_image_x, draw_image_y, image_boundary)
+            )
             for corn in corns
             if corn.can_spawn()
         ]
         [
-            tomato.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            sprite_image_data.append(
+                tomato.draw(draw_image_x, draw_image_y, image_boundary)
+            )
             for tomato in tomatoes
             if tomato.can_spawn()
         ]
         [
-            pumpkin.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            sprite_image_data.append(
+                pumpkin.draw(draw_image_x, draw_image_y, image_boundary)
+            )
             for pumpkin in pumpkins
             if pumpkin.can_spawn()
         ]
         if blast:
-            blast.draw(draw_image_x, draw_image_y, image_boundary, screen)
-        player.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            sprite_image_data.append(
+                blast.draw(draw_image_x, draw_image_y, image_boundary)
+            )
+        sprite_image_data.append(
+            player.draw(draw_image_x, draw_image_y, image_boundary)
+        )
 
         # Draw exit again overtop player if door closing
         if exit_closing:
-            exit.draw(draw_image_x, draw_image_y, image_boundary, screen)
+            sprite_image_data.append(
+                exit.draw(draw_image_x, draw_image_y, image_boundary)
+            )
 
-        # Update screen
-        pygame.display.flip()
+        # Update screen if necessasry
+        if screen_change:
+            # Clear screen and re-draw background
+            screen.fill(black)
+            screen.blit(area_surf, (0, 0))
+
+            # Print controls
+            black_rect = pygame.Rect(1130, 340, 450, 300)
+            screen.fill(black, black_rect)
+            for row, text_line in enumerate(controls_text[controls_option]):
+                text_surface = font.render(text_line, True, white)
+                screen.blit(text_surface, (1140, 350 + row * 50))
+
+            # Print score and lives
+            text_surface = font.render(str(score), True, white)
+            screen.blit(text_surface, (1250, 100))
+            lives_color = red if lives < 2 else (orange if lives < 5 else green)
+            text_surface = font.render(str(lives), True, lives_color)
+            screen.blit(text_surface, (1250, 150))
+
+            # Print sprites
+            for item in sprite_image_data:
+                screen.blit(item[0], item[1])
+
+            pygame.display.flip()
+            screen_change = False
+
+        # If game calculated tick faster than realtime clock, introduce
+        # delay to ensure game doesn't run too fast. Otherwise, allow game
+        # to run at the cadence of calculated tick, which may result in game
+        # running slower than tick rate on slower PCs.
+        game_dt = game_time.tick() / 1000
+        if game_dt - game_tick < 0:
+            time.sleep(game_tick - game_dt)
+            game_time.tick()
 
         # Brief pause once the player has collided with an enemy
         if player.can_spawn():
             time.sleep(0.5)
             # Update game clock at end of delay
-            game_time.tick(1000) / 1000
+            game_time.tick()
 
         # Change to the next level if door closing animation finished
         if exit_closing and not exit.is_animating():
