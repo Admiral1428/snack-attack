@@ -10,7 +10,6 @@ from fileio.load import import_image_dir
 from fileio.export import (
     export_path_coords_to_csv,
     export_asset_coords_to_csv,
-    export_maze_grid_to_txt,
     export_metadata,
     move_files,
 )
@@ -31,6 +30,7 @@ root.withdraw()
 # Initialize pygame modules
 pygame.init()
 pygame.font.init()
+clock = pygame.time.Clock()
 
 # Use Arial text
 font = pygame.font.SysFont("Arial", 30)
@@ -41,9 +41,9 @@ width, height = (1600, 900)
 screen = pygame.display.set_mode((width, height))
 
 # Define maze properties
-maze_width = 256
-maze_height = 192
-block_width = 12
+maze_width_unscaled = 256
+maze_height_unscaled = 192
+block_width_unscaled = 12
 min_block_spacing = 4
 draw_image_x = 20
 draw_image_y = 20
@@ -73,9 +73,9 @@ maze_color_index = 0
 
 # Scale variables
 scale_factor = 4
-maze_width *= scale_factor
-maze_height *= scale_factor
-block_width *= scale_factor
+maze_width = maze_width_unscaled * scale_factor
+maze_height = maze_height_unscaled * scale_factor
+block_width = block_width_unscaled * scale_factor
 min_block_spacing *= scale_factor
 image_boundary *= scale_factor
 
@@ -95,6 +95,7 @@ draw_maze(
     ltgray,
     [],
     screen,
+    0,
 )
 draw_maze(
     draw_image_x + image_boundary,
@@ -107,6 +108,7 @@ draw_maze(
     teal,
     [],
     screen,
+    0,
 )
 
 # Display instruction text
@@ -277,18 +279,6 @@ while running:
                     }
                     export_metadata(maze_metadata)
                     print("Maze metadata saved as level_metadata.csv")
-                    # Create maze grid and export to text file
-                    my_maze = invert_maze_to_grid(
-                        chosen_coords,
-                        maze_width,
-                        maze_height,
-                        draw_image_x,
-                        draw_image_y,
-                        image_boundary,
-                        block_width,
-                    )
-                    export_maze_grid_to_txt(my_maze)
-                    print("Level grid saved as level_grid.txt")
 
                     # Move maze files to a selected directory
                     messagebox.showinfo(
@@ -383,18 +373,34 @@ while running:
                 screen.blit(text_surface, (1445, 760))
                 pygame.display.update()
             elif event.key == pygame.K_a:
+                # Coarsen inputs prior to creating maze grid to optimize runtime
+                coords_scaled = []
+                for coord in chosen_coords:
+                    coords_scaled.append(
+                        (
+                            int(
+                                (coord[0] - draw_image_x - image_boundary)
+                                / scale_factor
+                            ),
+                            int(
+                                (coord[1] - draw_image_y - image_boundary)
+                                / scale_factor
+                            ),
+                        )
+                    )
+
                 # Create maze grid
                 my_maze = invert_maze_to_grid(
-                    chosen_coords,
-                    maze_width,
-                    maze_height,
-                    draw_image_x,
-                    draw_image_y,
-                    image_boundary,
-                    block_width,
+                    coords_scaled,
+                    maze_width_unscaled,
+                    maze_height_unscaled,
+                    0,
+                    0,
+                    0,
+                    block_width_unscaled,
                 )
                 # Determine how many full squares reside in maze
-                num_maze_squares = grid_space(my_maze) / (block_width**2)
+                num_maze_squares = grid_space(my_maze) / (block_width_unscaled**2)
                 # Create warning message if path space deemed too sparse
                 if num_maze_squares < 8:
                     messagebox.showinfo(
@@ -517,6 +523,9 @@ while running:
                             if asset.get("letter") == matching_asset[0].get("letter"):
                                 asset["location"] = asset_coord_result
 
+    # Limit input collection to 60 hz to limit CPU overhead
+    clock.tick(60)
+
     # Check if an arrow key was pressed, or if left mouse is currently held
     # down (outside of event loop) If so, draw a new square at that location,
     # if shifted to nearest nth coordinate is deemed legal (based on
@@ -529,7 +538,7 @@ while running:
                     draw_image_x + image_boundary + int(block_width / 2),
                     draw_image_y + image_boundary + int(block_width / 2),
                 )
-            else: 
+            else:
                 try:
                     if current_arrow == pygame.K_UP:
                         current_selected_pos = (
@@ -562,22 +571,37 @@ while running:
             my_rect, draw_image_x, draw_image_y, min_block_spacing, image_boundary
         )
 
-        # If chosen coordinate from arrow keys is already in chosen coordinates, 
-        # save that space so that user can backtrack. 
+        # If chosen coordinate from arrow keys is already in chosen coordinates,
+        # save that space so that user can backtrack.
         # Subsequently highlight the block with flashing so that they know where
         # they are for context.
         if arrow_pressed and my_rect.center in chosen_coords:
             arrow_index = chosen_coords.index(my_rect.center)
-            for i in range (3):
+            for i in range(3):
                 draw_square(my_rect, screen, white, dirty_rects)
-                time.sleep(1/30)
+                time.sleep(1 / 30)
                 draw_square(my_rect, screen, black, dirty_rects)
-                time.sleep(1/30)
+                time.sleep(1 / 30)
         else:
             arrow_index = -1
 
         # Reset flag for arrow key press
         arrow_pressed = False
+
+        # Coarsen inputs prior to checking maze grid to optimize runtime
+        coords_scaled = []
+        for coord in chosen_coords:
+            coords_scaled.append(
+                (
+                    int((coord[0] - draw_image_x - image_boundary) / scale_factor),
+                    int((coord[1] - draw_image_y - image_boundary) / scale_factor),
+                )
+            )
+        new_center = (
+            int((my_rect.center[0] - draw_image_x - image_boundary) / scale_factor),
+            int((my_rect.center[1] - draw_image_y - image_boundary) / scale_factor),
+        )
+        my_rect_scaled = define_rect(new_center, block_width_unscaled)
 
         # Check to make sure the current shifted position is not the same as
         # the last, and that it's not in chosen coords. If all criteria met,
@@ -586,6 +610,8 @@ while running:
             not shifted_coords_history or my_rect.center != shifted_coords_history[-1]
         ) and my_rect.center not in chosen_coords:
             shifted_coords_history.append(my_rect.center)
+            
+            
             if rect_within_boundary(
                 my_rect,
                 draw_image_x,
@@ -594,14 +620,14 @@ while running:
                 maze_width,
                 maze_height,
             ) and rect_gives_uniform_path(
-                chosen_coords,
-                my_rect,
-                maze_width,
-                maze_height,
-                draw_image_x,
-                draw_image_y,
-                image_boundary,
-                block_width,
+                coords_scaled,
+                my_rect_scaled,
+                maze_width_unscaled,
+                maze_height_unscaled,
+                0,
+                0,
+                0,
+                block_width_unscaled,
             ):
                 # Add updated mouse position to list of previous points
                 chosen_coords.append((my_rect.center))

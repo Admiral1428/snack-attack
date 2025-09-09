@@ -44,6 +44,15 @@ def export_metadata(maze_metadata):
         writer.writerow(maze_metadata.values())
 
 
+# Function to export dictionary containing settings
+def export_settings(settings):
+    fieldnames = settings.keys()
+    with open("config.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(settings.keys())
+        writer.writerow(settings.values())
+
+
 # Funtion to draw maze grid to text file
 def export_maze_grid_to_txt(maze_grid):
     f = open("level_grid.txt", "w")
@@ -61,6 +70,23 @@ def move_files(source_directory, destination_directory):
     for filename in os.listdir(source_directory):
         # Check if the file ends with .csv or .txt or .png
         if filename.endswith((".csv", ".txt", ".png")):
+            source_path = os.path.join(source_directory, filename)
+            destination_path = os.path.join(destination_directory, filename)
+
+            try:
+                shutil.move(source_path, destination_path)
+                print(f"Moved '{filename}' to '{destination_directory}'")
+            except Exception as e:
+                print(f"Error moving '{filename}': {e}")
+
+# Move specified file to another directory
+def move_one_file(source_file, source_directory, destination_directory):
+    if not os.path.exists(destination_directory):
+        os.makedirs(destination_directory)
+
+    for filename in os.listdir(source_directory):
+        # Check if the file ends with .csv or .txt or .png
+        if source_file == filename:
             source_path = os.path.join(source_directory, filename)
             destination_path = os.path.join(destination_directory, filename)
 
