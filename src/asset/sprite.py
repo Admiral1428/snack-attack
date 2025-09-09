@@ -81,14 +81,31 @@ class Sprite:
     # based on a given delta position
     def can_move(self, delta_x, delta_y, maze_grid):
         # Determine new area created by a shift
-        if delta_x > 0: # Moving right
-            new_area_rect = pygame.Rect(self.path_rect.right, self.path_rect.top, delta_x, self.path_rect.height)
+        if delta_x > 0:  # Moving right
+            new_area_rect = pygame.Rect(
+                self.path_rect.right, self.path_rect.top, delta_x, self.path_rect.height
+            )
         elif delta_x < 0:  # Moving left
-            new_area_rect = pygame.Rect(self.path_rect.left + delta_x, self.path_rect.top, -delta_x, self.path_rect.height)
+            new_area_rect = pygame.Rect(
+                self.path_rect.left + delta_x,
+                self.path_rect.top,
+                -delta_x,
+                self.path_rect.height,
+            )
         elif delta_y > 0:  # Moving down
-            new_area_rect = pygame.Rect(self.path_rect.left, self.path_rect.bottom, self.path_rect.width, delta_y)
+            new_area_rect = pygame.Rect(
+                self.path_rect.left,
+                self.path_rect.bottom,
+                self.path_rect.width,
+                delta_y,
+            )
         elif delta_y < 0:  # Moving up
-            new_area_rect = pygame.Rect(self.path_rect.left, self.path_rect.top + delta_y, self.path_rect.width, -delta_y)
+            new_area_rect = pygame.Rect(
+                self.path_rect.left,
+                self.path_rect.top + delta_y,
+                self.path_rect.width,
+                -delta_y,
+            )
         else:
             return True
         return Sprite.is_path_clear(new_area_rect, maze_grid)
@@ -224,7 +241,10 @@ class Sprite:
                 self.got_stopped = True
 
         # Return whether or not movement occured
-        if not do_move or orig_position == (self.center_position[0], self.center_position[1]):
+        if not do_move or orig_position == (
+            self.center_position[0],
+            self.center_position[1],
+        ):
             return False
         return True
 
@@ -270,7 +290,7 @@ class Sprite:
             self.facing = "wheels_right"
 
     # Method to draw onto screen at its position, with screen offsets as needed
-    def draw(self, draw_image_x, draw_image_y, image_boundary):
+    def draw(self, draw_image_x, draw_image_y, image_boundary, maze_factor):
         self.get_image()
         draw_image = self.image
         if self.rotation_angle != 0:
@@ -278,7 +298,10 @@ class Sprite:
         if self.mirror:
             draw_image = pygame.transform.flip(draw_image, True, False)
         image_rect = draw_image.get_rect()
-        image_rect.center = self.center_position
+        image_rect.center = (
+            int(self.center_position[0] * maze_factor),
+            int(self.center_position[1] * maze_factor),
+        )
         image_rect.move_ip(draw_image_x + image_boundary, draw_image_y + image_boundary)
         # If animation finished, reset variables
         if (
@@ -323,8 +346,10 @@ class Sprite:
             dirs = [(1, 0), (-1, 0), (0, -1), (0, 1)]
 
             # Check if possible to move towards player with clear path
+            move_direction = ()
             aligned_second_sprite = False
-            move_direction = self.can_move_towards(second_sprite, maze_grid)
+            if second_sprite:
+                move_direction = self.can_move_towards(second_sprite, maze_grid)
             if move_direction:
                 aligned_second_sprite = True
                 self.set_desired_direction(move_direction[0], move_direction[1])
@@ -429,7 +454,7 @@ class Sprite:
     # Return direction
     def get_direction(self):
         return self.direction
-    
+
     # Return whether object stopped, following a valid movemement attempt
     # amount as calculated with the game tick
     def is_stopped(self):

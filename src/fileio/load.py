@@ -26,26 +26,22 @@ def get_levels(directory_path):
         map_path = os.path.join(directory_path, folder)
         if not folder.startswith(".") and os.path.isdir(map_path):
             asset_filepath = ""
-            grid_filepath = ""
             metadata_filepath = ""
             path_filepath = ""
             screenshot_filepath = ""
             for filename in os.listdir(map_path):
                 if filename.lower().endswith("asset_coordinates.csv"):
                     asset_filepath = os.path.join(map_path, filename)
-                elif filename.lower().endswith("grid.txt"):
-                    grid_filepath = os.path.join(map_path, filename)
                 elif filename.lower().endswith("metadata.csv"):
                     metadata_filepath = os.path.join(map_path, filename)
                 elif filename.lower().endswith("path_coordinates.csv"):
                     path_filepath = os.path.join(map_path, filename)
                 elif filename.lower().endswith("screenshot.png"):
                     screenshot_filepath = os.path.join(map_path, filename)
-            if asset_filepath and grid_filepath and metadata_filepath and path_filepath:
+            if asset_filepath and metadata_filepath and path_filepath:
                 levels.append(
                     {
                         "assets": asset_filepath,
-                        "grid": grid_filepath,
                         "metadata": metadata_filepath,
                         "path": path_filepath,
                         "screenshot": screenshot_filepath,

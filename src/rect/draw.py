@@ -106,6 +106,7 @@ def draw_maze(
     path_color,
     path_coords,
     screen,
+    time_delay,
 ):
     outer_rect = pygame.Rect(
         draw_image_x,
@@ -125,6 +126,7 @@ def draw_maze(
         my_rect = define_rect(shifted_coord, block_width)
         draw_square(my_rect, screen, path_color, dirty_rects)
 
-        # Pause to create an old-school block-by-block tracing of the level,
-        # and gives player a moment to recover from previous level
-        time.sleep(0.003)
+        if time_delay > 0:
+            # Pause to create an old-school block-by-block tracing of the level,
+            # and gives player a moment to recover from previous level
+            time.sleep(time_delay)
