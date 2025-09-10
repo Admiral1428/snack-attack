@@ -107,6 +107,7 @@ def draw_maze(
     path_coords,
     screen,
     time_delay,
+    quit_key,
 ):
     outer_rect = pygame.Rect(
         draw_image_x,
@@ -117,6 +118,7 @@ def draw_maze(
     pygame.draw.rect(screen, maze_color, outer_rect)
     pygame.display.update()
 
+    exit_key_selected = False
     dirty_rects = []
     for coord in path_coords:
         shifted_coord = (
@@ -130,3 +132,19 @@ def draw_maze(
             # Pause to create an old-school block-by-block tracing of the level,
             # and gives player a moment to recover from previous level
             time.sleep(time_delay)
+
+        # Quit draw if key pressed
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == quit_key:
+                    quit_key_down = True
+            if event.type == pygame.KEYUP:
+                if event.key == quit_key and quit_key_down:
+                    exit_key_selected = True
+                    break
+
+        if exit_key_selected:
+            break
+    return exit_key_selected

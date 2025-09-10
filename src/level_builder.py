@@ -96,6 +96,7 @@ draw_maze(
     [],
     screen,
     0,
+    None,
 )
 draw_maze(
     draw_image_x + image_boundary,
@@ -109,6 +110,7 @@ draw_maze(
     [],
     screen,
     0,
+    None,
 )
 
 # Display instruction text

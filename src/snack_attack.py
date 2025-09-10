@@ -8,6 +8,7 @@ from utils.exceptions import CustomError
 from rect.draw import draw_maze
 from asset.sprite import Sprite
 from grid.utils import invert_maze_to_grid
+from fileio.export import export_settings, move_one_file
 from fileio.load import (
     import_image_dir,
     import_sound_dir,
@@ -30,15 +31,30 @@ font = pygame.font.SysFont("lucidaconsole", 26)
 
 # Load game settings
 maze_fidelity = ""
+controls_option = None
 settings = read_csv_dict("../assets/settings/config.csv")
 for dict in settings:
-    locals().update(dict)
-if maze_fidelity == "fine":
-    maze_factor = 1
-elif maze_fidelity == "normal":
-    maze_factor = 2
-else:
-    maze_factor = 4
+    for key, value in dict.items():
+        if key == "maze_fidelity":
+            maze_fidelity = value
+        elif key == "controls_option":
+            controls_option = ast.literal_eval(value)
+
+if controls_option not in range(4):
+    raise CustomError("Controls scheme setting is not a valid option.")
+
+# Define maze fidelity options
+maze_fidelity_opts = ["coarse", "normal", "fine"]
+maze_fidelity_factors = [4, 2, 1]
+
+maze_fidelity_index = None
+maze_factor = None
+for index, opt in enumerate(maze_fidelity_opts):
+    if maze_fidelity == opt:
+        maze_fidelity_index = index
+        maze_factor = maze_fidelity_factors[index]
+if maze_fidelity_index == None or maze_factor == None:
+    raise CustomError("Maze fidelity is not a valid option.")
 
 # Dimensions for window
 width, height = (1600, 900)
@@ -107,7 +123,6 @@ how_to_strings = [
 ]
 
 # Controls option and text
-controls_option = 0
 controls_text = []
 controls_text.append(
     [
@@ -195,7 +210,6 @@ escape_pressed = False
 fire_pressed = False
 need_pause_text = False
 reached_last_level = False
-controls_option = 0
 key_order = deque(maxlen=2)
 direction_order = deque(maxlen=1)
 score = 0
@@ -218,6 +232,13 @@ while running:
                 else:
                     controls_option += 1
                 f1_pressed = True
+                # Load then re-export settings file
+                settings = read_csv_dict("../assets/settings/config.csv")
+                for key, value in settings[0].items():
+                    if key == "controls_option":
+                        settings[0][key] = controls_option
+                export_settings(settings[0])
+                move_one_file("config.csv", ".", "../assets/settings/")
             if event.key == pygame.K_PAUSE:
                 # Adjust game loop start timer based on pause behavior
                 if not paused:
@@ -277,7 +298,9 @@ while running:
     # Show game intro screen
     if game_intro:
         sounds["intro"].play()
-        running = run_title_screen(screen, images, item_image_defs, spawn_speeds)
+        running = run_title_screen(
+            screen, images, item_image_defs, spawn_speeds, maze_fidelity
+        )
 
         # Set variables once title exited
         # Load game settings
@@ -351,7 +374,7 @@ while running:
             text_surface = font.render(text_line, True, white)
             screen.blit(text_surface, (1140, 300 + row * 50))
 
-        draw_maze(
+        next_level_key = draw_maze(
             draw_image_x,
             draw_image_y,
             image_boundary,
@@ -363,6 +386,7 @@ while running:
             maze_path,
             screen,
             0.003,
+            pygame.K_F10,
         )
 
         # Scale inputs prior to creating maze grid, based on chosen fidelity
@@ -441,13 +465,22 @@ while running:
             )
             raise CustomError(custom_string + str(allowable_letters))
 
-        # Set flags
-        create_sprites = True
-        exit_created = False
-        exit_found = False
-        exit_opening = False
-        exit_closing = False
-        maze_draw = False
+        # Skip to next level if pressed during draw
+        if next_level_key:
+            if level_index >= len(levels) - 1:
+                level_index = 0
+                reached_last_level = True
+            else:
+                level_index += 1
+            maze_draw = True
+            f10_pressed = False
+        else:
+            create_sprites = True
+            exit_created = False
+            exit_found = False
+            exit_opening = False
+            exit_closing = False
+            maze_draw = False
 
     # Create Sprite objects
     elif create_sprites:
@@ -725,9 +758,7 @@ while running:
 
         # Remove projectiles which hit an enemy or a wall, then draw blast
         if projectile and (projectile.is_destroyed() or projectile.is_stopped()):
-            if projectile.is_destroyed():
-                sounds["proj_hit_enemy"].play()
-            else:
+            if projectile.is_stopped():
                 sounds["proj_hit_wall"].play()
             screen_change = True
             projectile_location = projectile.get_center_position()
@@ -768,6 +799,7 @@ while running:
                 score += 50
                 projectile.toggle_destroy()
                 corn.toggle_destroy()
+                sounds["proj_hit_enemy"].play()
                 spawned_enemies -= 1
                 start_time += seconds_to_spawn
                 corn_images = [
@@ -795,6 +827,7 @@ while running:
                     score += 100
                     projectile.toggle_destroy()
                     tomato.toggle_destroy()
+                    sounds["proj_hit_enemy"].play()
                     spawned_enemies -= 1
                     start_time += seconds_to_spawn
                     tomato_images = [
@@ -820,6 +853,7 @@ while running:
                 ):
                     screen_change = True
                     projectile.toggle_destroy()
+                    sounds["proj_hit_pumpkin"].play()
                     pumpkin_images = [
                         images["pumpkin_fire"],
                         images["pumpkin"],
@@ -828,23 +862,23 @@ while running:
                     pumpkin.animate(pumpkin_images, pumpkin_delays)
 
         if not player.can_spawn():
-            # Detect item collision and delete those items
-            delete_items = []
-            for item in items:
-                if player.collide_check(items[item]):
-                    screen_change = True
-                    score += 200
-                    delete_items.append(item)
-                    if len(items) > 1:
-                        sounds["item"].play()
-
             # If no more enemies, remove remaining items
+            delete_items = []
             enemy_collection = corns + tomatoes + pumpkins
             all_destroyed = all(enemy.is_destroyed() for enemy in enemy_collection)
             if all_destroyed:
                 screen_change = True
                 for item in items:
                     delete_items.append(item)
+            else:
+                # Detect item collision and delete those items
+                for item in items:
+                    if player.collide_check(items[item]):
+                        screen_change = True
+                        score += 200
+                        delete_items.append(item)
+                        if len(items) > 1:
+                            sounds["item"].play()
 
             # Delete appropriate items
             for item in delete_items:
@@ -857,8 +891,6 @@ while running:
                 if not all_destroyed:
                     sounds["extra_life"].play()
                     lives += 1
-                else:
-                    sounds["item"].play()
                 exit = Sprite(
                     "H",
                     images["door"],
