@@ -2,6 +2,7 @@ import os
 import ast
 import time
 import pygame
+from settings import config as cfg
 from collections import deque
 from title.intro import run_title_screen
 from utils.exceptions import CustomError
@@ -34,7 +35,7 @@ font = pygame.font.SysFont("lucidaconsole", 26)
 # Load game settings
 maze_fidelity = ""
 controls_option = None
-settings = read_csv_dict("../assets/settings/config.csv")
+settings = read_csv_dict(cfg.DIRS["settings"] + cfg.FILES["settings"])
 for dict in settings:
     for key, value in dict.items():
         if key == "maze_fidelity":
@@ -43,160 +44,57 @@ for dict in settings:
             controls_option = ast.literal_eval(value)
 
 if controls_option not in range(4):
-    raise CustomError("Controls scheme setting is not a valid option.")
+    raise CustomError(cfg.ERROR_STRINGS["controls"])
 
-# Define maze fidelity options
-maze_fidelity_opts = ["coarse", "normal", "fine"]
-maze_fidelity_factors = [4, 2, 1]
-
+# Get maze fidelity options
 maze_fidelity_index = None
 maze_factor = None
-for index, opt in enumerate(maze_fidelity_opts):
+for index, opt in enumerate(cfg.MAZE_FIDELITY_OPTS):
     if maze_fidelity == opt:
         maze_fidelity_index = index
-        maze_factor = maze_fidelity_factors[index]
+        maze_factor = cfg.MAZE_FIDELITY_FACTORS[index]
 if maze_fidelity_index == None or maze_factor == None:
-    raise CustomError("Maze fidelity is not a valid option.")
+    raise CustomError(cfg.ERROR_STRINGS["maze_fidelity"])
 
 # Dimensions for window
-width, height = (1600, 900)
-screen = pygame.display.set_mode((width, height), vsync=1)
-
-# Define maze properties
-maze_width = 256
-maze_height = 192
-block_width = 12
-min_block_spacing = 4
-draw_image_x = 20
-draw_image_y = 20
-image_boundary = 4
+screen = pygame.display.set_mode((cfg.WIDTH, cfg.HEIGHT), vsync=1)
 
 # Set window title
-pygame.display.set_caption("Snack Attack")
-
-# Define colors
-white = (255, 255, 255)
-black = (0, 0, 0)
-teal = (0, 168, 168)
-yellow = (255, 255, 0)
-orange = (255, 128, 0)
-green = (0, 255, 0)
-dkgreen = (0, 102, 0)
-purple = (128, 0, 128)
-magenta = (253, 61, 181)
-red = (255, 0, 0)
-blue = (0, 0, 255)
-gray = (128, 128, 128)
-
-# Create a list of colors to be used for selecting maze wall color
-maze_colors = [teal, yellow, orange, green, dkgreen, purple, magenta, red, blue, gray]
+pygame.display.set_caption(cfg.TITLE_TEXT)
 
 # Scale variables
-scale_factor = 4
-maze_width *= scale_factor
-maze_height *= scale_factor
-block_width *= scale_factor
-min_block_spacing *= scale_factor
-image_boundary *= scale_factor
+maze_width = cfg.MAZE_WIDTH * cfg.SCALE_FACTOR
+maze_height = cfg.MAZE_HEIGHT * cfg.SCALE_FACTOR
+block_width = cfg.BLOCK_WIDTH * cfg.SCALE_FACTOR
+image_boundary = cfg.IMAGE_BOUNDARY * cfg.SCALE_FACTOR
 
 # Fill background with black color
-screen.fill(black)
-
-# Display level info text
-info_strings = [
-    "Level: " "",
-    "Score: ",
-    "Lives: ",
-]
-
-# Game over text
-endgame_strings = [
-    "GAME OVER",
-    "Thank you for playing! :)",
-]
-
-# Display instruction text
-how_to_strings = [
-    "************************",
-    "Pause = Pause game",
-    "F1 = Change controls",
-    "F10 = Skip Level",
-    "Escape = Title Screen",
-]
-
-# Controls option and text
-controls_text = []
-controls_text.append(
-    [
-        "",
-        "Hold W = Move up",
-        "Hold S = Move down",
-        "Hold A = Move left",
-        "Hold D = Move right",
-        "Press Enter = Fire weapon",
-    ]
-)
-controls_text.append(
-    [
-        "",
-        "Hold I = Move up",
-        "Hold K = Move down",
-        "Hold J = Move left",
-        "Hold L = Move right",
-        "Press F = Fire weapon",
-    ]
-)
-controls_text.append(
-    [
-        "Press Space = Stop",
-        "Press W = Move up",
-        "Press S = Move down",
-        "Press A = Move left",
-        "Press D = Move right",
-        "Press Enter = Fire weapon",
-    ]
-)
-controls_text.append(
-    [
-        "Press Space = Stop",
-        "Press I = Move up",
-        "Press K = Move down",
-        "Press J = Move left",
-        "Press L = Move right",
-        "Press F = Fire weapon",
-    ]
-)
+screen.fill(cfg.COLORS["black"])
 
 # Load enemy images and scale them
-images = import_image_dir("../assets/sprites/")
+images = import_image_dir(cfg.DIRS["images"])
 for image in images:
     images[image] = pygame.transform.scale(
         images[image],
         (
-            int(images[image].get_width() * scale_factor),
-            int(images[image].get_height() * scale_factor),
+            int(images[image].get_width() * cfg.SCALE_FACTOR),
+            int(images[image].get_height() * cfg.SCALE_FACTOR),
         ),
     )
     # Make teal the transparent color
-    images[image].set_colorkey(teal)
-
-# Store dictionary with item image definitions
-item_image_defs = {"1": "strawberry", "2": "cherry", "3": "banana", "4": "grape"}
+    images[image].set_colorkey(cfg.COLORS["teal"])
 
 # Get sound effects
-sounds = import_sound_dir("../assets/sounds/")
+sounds = import_sound_dir(cfg.DIRS["sounds"])
 
 # Get levels and their supporting file paths
-level_dir = "../assets/levels/"
+level_dir = cfg.DIRS["levels"]
 levels = get_levels(level_dir)
 
 if not levels:
     raise CustomError(f"Could not load any level folders at {level_dir}")
 else:
     level_index = 0
-
-# Enemy spawn frequency speed definitions (seconds between spawns)
-spawn_speeds = {"slow": 1, "medium": 0.75, "fast": 0.5, "frantic": 0.25}
 
 # Update initial display
 pygame.display.update()
@@ -215,7 +113,7 @@ reached_last_level = False
 key_order = deque(maxlen=2)
 direction_order = deque(maxlen=1)
 score = 0
-lives = 5
+lives = cfg.LIVES_DEFAULT
 running = True
 while running:
     for event in pygame.event.get():
@@ -229,18 +127,19 @@ while running:
             if event.key == pygame.K_F1:
                 screen_change = True
                 key_order = deque(maxlen=2)
-                if controls_option == len(controls_text) - 1:
+                if controls_option == len(cfg.CONTROLS_TEXT) - 1:
                     controls_option = 0
                 else:
                     controls_option += 1
                 f1_pressed = True
+
                 # Load then re-export settings file
-                settings = read_csv_dict("../assets/settings/config.csv")
+                settings = read_csv_dict(cfg.DIRS["settings"] + cfg.FILES["settings"])
                 for key, value in settings[0].items():
                     if key == "controls_option":
                         settings[0][key] = controls_option
                 export_settings(settings[0])
-                move_one_file("config.csv", ".", "../assets/settings/")
+                move_one_file(cfg.FILES["settings"], ".", cfg.DIRS["settings"])
             if event.key == pygame.K_PAUSE:
                 # Adjust game loop start timer based on pause behavior
                 if not paused:
@@ -248,9 +147,11 @@ while running:
                 else:
                     pause_end = time.time()
                     start_time += pause_end - pause_start
+
                 # Pause or unpause, and reset flag for printing text
                 paused = not paused
                 need_pause_text = True
+
                 # Update game clock at end of pause
                 game_time.tick()
             if (
@@ -277,17 +178,18 @@ while running:
                 f10_pressed = False
             if event.key == pygame.K_ESCAPE and escape_pressed:
                 escape_pressed = False
-                for row, text_line in enumerate(endgame_strings):
-                    text_surface = font.render(text_line, True, yellow)
-                    screen.blit(text_surface, (1140, 200 + row * 50))
+                for row, text_line in enumerate(cfg.ENDGAME_STRINGS):
+                    text_surface = font.render(text_line, True, cfg.COLORS["yellow"])
+                    locs = cfg.TEXT_LOC["endgame"]
+                    screen.blit(text_surface, (locs[0], locs[1] + row * locs[2]))
                 level_index = 0
                 reached_last_level = False
                 score = 0
-                lives = 5
+                lives = cfg.LIVES_DEFAULT
                 game_intro = True
                 sounds["endgame"].play()
                 pygame.display.flip()
-                time.sleep(3)
+                time.sleep(cfg.PAUSES["endgame"])
             if event.key == pygame.K_F1 and f1_pressed:
                 f1_pressed = False
             if (
@@ -300,13 +202,11 @@ while running:
     # Show game intro screen
     if game_intro:
         sounds["intro"].play()
-        running = run_title_screen(
-            screen, images, item_image_defs, spawn_speeds, maze_fidelity
-        )
+        running = run_title_screen(screen, images, maze_fidelity)
 
         # Set variables once title exited
         # Load game settings
-        settings = read_csv_dict("../assets/settings/config.csv")
+        settings = read_csv_dict(cfg.DIRS["settings"] + cfg.FILES["settings"])
         for dict in settings:
             for key, value in dict.items():
                 if key == "maze_fidelity":
@@ -321,22 +221,8 @@ while running:
             maze_fidelity_index = 0
             maze_factor = 4
 
-        # Level speed definitions (coordinates per game tick for moving sprites)
-        level_speeds = {
-            "slow": int(144 / maze_factor),
-            "medium": int(180 / maze_factor),
-            "fast": int(240 / maze_factor),
-            "frantic": (360 / maze_factor),
-        }
-
-        # Set game tick speed to such that movement calculation is no more than one
-        # coordinate per tick, and defined speeds have meaningful changes to gameplay
-        # e.g., ticks needed to move one coordinate:
-        # slow:     144 * 5 = 720
-        # medium:   180 * 4 = 720
-        # fast:     240 * 3 = 720
-        # frantic:  360 * 2 = 720
-        game_tick = 1 / (720 / maze_factor)
+        # Scale game tick based on animation smoothness
+        game_tick = cfg.GAME_TICK * maze_factor
 
         if running:
             maze_draw = True
@@ -348,43 +234,48 @@ while running:
         maze_path = read_csv_path(levels[level_index].get("path"))
 
         # Perform clearing of screen to remove old maze and clear up memory
-        screen.fill(black)
+        screen.fill(cfg.COLORS["black"])
         pygame.display.flip()
 
         # Print level info
-        for row, text_line in enumerate(info_strings):
-            text_surface = font.render(text_line, True, white)
-            screen.blit(text_surface, (1140, 50 + row * 50))
+        for row, text_line in enumerate(cfg.INFO_STRINGS):
+            text_surface = font.render(text_line, True, cfg.COLORS["white"])
+            locs = cfg.TEXT_LOC["level_score_lives"]
+            screen.blit(text_surface, (locs[0], locs[1] + row * locs[2]))
         # Trim level name
         folder_name = levels[level_index].get("folder")
         if len(folder_name) > 8:
             folder_name = folder_name[:8] + "..."
         if reached_last_level:
-            text_surface = font.render(folder_name + " (reprise)", True, red)
+            text_surface = font.render(
+                folder_name + " (reprise)", True, cfg.COLORS["red"]
+            )
         else:
-            text_surface = font.render(folder_name, True, white)
-
-        screen.blit(text_surface, (1250, 50))
+            text_surface = font.render(folder_name, True, cfg.COLORS["white"])
+        locs = cfg.TEXT_LOC["level_value"]
+        screen.blit(text_surface, (locs[0], locs[1]))
 
         # Print instructions
-        for row, text_line in enumerate(how_to_strings):
-            text_surface = font.render(text_line, True, white)
-            screen.blit(text_surface, (1140, 600 + row * 50))
+        for row, text_line in enumerate(cfg.HOW_TO_STRINGS):
+            text_surface = font.render(text_line, True, cfg.COLORS["white"])
+            locs = cfg.TEXT_LOC["instructions"]
+            screen.blit(text_surface, (locs[0], locs[1] + row * locs[2]))
 
         # Print controls
-        for row, text_line in enumerate(controls_text[controls_option]):
-            text_surface = font.render(text_line, True, white)
-            screen.blit(text_surface, (1140, 300 + row * 50))
+        for row, text_line in enumerate(cfg.CONTROLS_TEXT[controls_option]):
+            text_surface = font.render(text_line, True, cfg.COLORS["white"])
+            locs = cfg.TEXT_LOC["controls"]
+            screen.blit(text_surface, (locs[0], locs[1] + row * locs[2]))
 
         next_level_key = draw_maze(
-            draw_image_x,
-            draw_image_y,
+            cfg.DRAW_IMAGE_X,
+            cfg.DRAW_IMAGE_Y,
             image_boundary,
             maze_width,
             maze_height,
             block_width,
             ast.literal_eval(maze_metadata.get("maze_color")),
-            black,
+            cfg.COLORS["black"],
             maze_path,
             screen,
             0.003,
@@ -413,7 +304,7 @@ while running:
         )
 
         # Save subsurface for game loop re-draw
-        rect_area = pygame.Rect(0, 0, width, height)
+        rect_area = pygame.Rect(0, 0, cfg.WIDTH, cfg.HEIGHT)
         temp_surf = screen.subsurface(rect_area)
         area_surf = temp_surf.copy()
 
@@ -430,21 +321,21 @@ while running:
             num_tomato = ast.literal_eval(maze_metadata.get("tomato_quantity"))
             num_pumpkin = ast.literal_eval(maze_metadata.get("pumpkin_quantity"))
 
-        # Assign appropriate sprite speed, defaulting to slow
-        if level_speed in level_speeds.keys():
-            pixels_per_second = level_speeds.get(level_speed)
+        # Assign appropriate sprite speed, defaulting to slow,
+        # while accounting for animation smoothness
+        if level_speed in cfg.LEVEL_SPEEDS.keys():
+            pixels_per_second = int(cfg.LEVEL_SPEEDS.get(level_speed) / maze_factor)
         else:
-            pixels_per_second = level_speeds.get("slow")
+            pixels_per_second = int(cfg.LEVEL_SPEEDS.get("slow") / maze_factor)
 
         # Assign appropriate enemy respawn speed, defaulting to slow
-        if level_speed in spawn_speeds.keys():
-            seconds_to_spawn = spawn_speeds.get(level_speed)
+        if level_speed in cfg.SPAWN_SPEEDS.keys():
+            seconds_to_spawn = cfg.SPAWN_SPEEDS.get(level_speed)
         else:
-            seconds_to_spawn = spawn_speeds.get("slow")
+            seconds_to_spawn = cfg.SPAWN_SPEEDS.get("slow")
 
         # Save maze asset coordinates into a single dictionary and check validity
         # of asset coordinates with error handling
-        allowable_letters = ["S", "R", "E", "1", "2", "3", "4", "H"]
         asset_coord = {}
         for dict in maze_assets:
             asset_coord[dict.get("letter")] = ast.literal_eval(dict.get("location"))
@@ -454,18 +345,16 @@ while running:
                 int(asset_coord[dict.get("letter")][1] / maze_factor),
             )
         if (
-            len(asset_coord) != len(allowable_letters)
+            len(asset_coord) != len(cfg.ALLOWABLE_LETTERS)
             or any(
                 not isinstance(value, tuple) or not value
                 for value in asset_coord.values()
             )
-            or any(key not in allowable_letters for key in asset_coord.keys())
+            or any(key not in cfg.ALLOWABLE_LETTERS for key in asset_coord.keys())
         ):
-            custom_string = (
-                "Level error! The asset coordinates csv must include"
-                " exactly 8 unique asset locations, assigned to each of the following: "
+            raise CustomError(
+                cfg.ERROR_STRINGS["asset_letter"] + str(cfg.ALLOWABLE_LETTERS)
             )
-            raise CustomError(custom_string + str(allowable_letters))
 
         # Skip to next level if pressed during draw
         if next_level_key:
@@ -489,10 +378,10 @@ while running:
         # Initialize items
         items = {}
         for key, value in asset_coord.items():
-            if key in item_image_defs:
+            if key in cfg.ITEM_IMAGE_DEFS:
                 items[key] = Sprite(
                     key,
-                    images[item_image_defs.get(key)],
+                    images[cfg.ITEM_IMAGE_DEFS.get(key)],
                     asset_coord.get(key),
                     0,
                     False,
@@ -519,7 +408,7 @@ while running:
             corns.append(
                 Enemy(
                     "corn",
-                    images["corn"],
+                    images[cfg.IMAGE_SERIES["corn"][0]],
                     asset_coord.get("E"),
                     pixels_per_second,
                     False,
@@ -531,7 +420,7 @@ while running:
             tomatoes.append(
                 Enemy(
                     "tomato",
-                    images["tomato"],
+                    images[cfg.IMAGE_SERIES["tomato"][0]],
                     asset_coord.get("E"),
                     pixels_per_second,
                     False,
@@ -543,7 +432,7 @@ while running:
             pumpkins.append(
                 Enemy(
                     "pumpkin",
-                    images["pumpkin"],
+                    images[cfg.IMAGE_SERIES["pumpkin"][0]],
                     asset_coord.get("E"),
                     pixels_per_second,
                     False,
@@ -714,21 +603,14 @@ while running:
             projectile = []
             blast = Sprite(
                 "blast",
-                images["projectile_hit_01"],
+                images[cfg.IMAGE_SERIES["blast"][0]],
                 projectile_location,
                 0,
                 False,
                 int(block_width / (maze_factor * 4)),
                 int(block_width / (maze_factor * 4)),
             )
-            blast_images = [
-                images["projectile_hit_02"],
-                images["projectile_hit_03"],
-                images["projectile_hit_02"],
-                images["projectile_hit_01"],
-            ]
-            blast_delays = [0.05, 0.1, 0.15, 0.2]
-            blast.animate(blast_images, blast_delays)
+            blast.animate(images, cfg.IMAGE_SERIES["blast"][1:], cfg.DELAYS["blast"])
         elif blast and not blast.is_animating():
             # Remove blasts which have finished animating
             blast = []
@@ -745,21 +627,13 @@ while running:
                 and projectile.collide_check(corn)
             ):
                 screen_change = True
-                score += 50
+                score += cfg.SCORES["corn"]
                 projectile.toggle_destroy()
                 corn.toggle_destroy()
                 sounds["proj_hit_enemy"].play()
                 spawned_enemies -= 1
                 start_time += seconds_to_spawn
-                corn_images = [
-                    images["corn_flat_01"],
-                    images["corn_flat_02"],
-                    images["corn_flat_03"],
-                    images["corn_flat_04"],
-                    images["empty"],
-                ]
-                corn_delays = [0.1, 0.15, 0.2, 0.25, 0.3]
-                corn.animate(corn_images, corn_delays)
+                corn.animate(images, cfg.IMAGE_SERIES["corn"][1:], cfg.DELAYS["corn"])
 
         # Detect tomato collision with player and projectile
         if not player.can_spawn():
@@ -773,21 +647,15 @@ while running:
                     and projectile.collide_check(tomato)
                 ):
                     screen_change = True
-                    score += 100
+                    score += cfg.SCORES["tomato"]
                     projectile.toggle_destroy()
                     tomato.toggle_destroy()
                     sounds["proj_hit_enemy"].play()
                     spawned_enemies -= 1
                     start_time += seconds_to_spawn
-                    tomato_images = [
-                        images["tomato_flat_01"],
-                        images["tomato_flat_02"],
-                        images["tomato_flat_03"],
-                        images["tomato_flat_04"],
-                        images["empty"],
-                    ]
-                    tomato_delays = [0.1, 0.15, 0.2, 0.25, 0.3]
-                    tomato.animate(tomato_images, tomato_delays)
+                    tomato.animate(
+                        images, cfg.IMAGE_SERIES["tomato"][1:], cfg.DELAYS["tomato"]
+                    )
 
         # Detect pumpkin collision with player and projectile
         if not player.can_spawn():
@@ -803,12 +671,9 @@ while running:
                     screen_change = True
                     projectile.toggle_destroy()
                     sounds["proj_hit_pumpkin"].play()
-                    pumpkin_images = [
-                        images["pumpkin_fire"],
-                        images["pumpkin"],
-                    ]
-                    pumpkin_delays = [0.1, 0.4]
-                    pumpkin.animate(pumpkin_images, pumpkin_delays)
+                    pumpkin.animate(
+                        images, cfg.IMAGE_SERIES["pumpkin"][1:], cfg.DELAYS["pumpkin"]
+                    )
 
         if not player.can_spawn():
             # If no more enemies, remove remaining items
@@ -824,7 +689,7 @@ while running:
                 for item in items:
                     if player.collide_check(items[item]):
                         screen_change = True
-                        score += 200
+                        score += cfg.SCORES["item"]
                         delete_items.append(item)
                         if len(items) > 1:
                             sounds["item"].play()
@@ -854,7 +719,9 @@ while running:
         # Draw exit and animate
         if exit_created:
             sprite_image_data.append(
-                exit.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                exit.draw(
+                    cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                )
             )
             # Proceed to next level if collision with exit
             if player.collide_check(exit):
@@ -862,89 +729,105 @@ while running:
                 exit_found = True
                 if not exit_opening:
                     # Animate door opening
-                    door_images = [
-                        images["door"],
-                        images["door_open_01"],
-                        images["door_open_02"],
-                        images["door_open_03"],
-                        images["door_open_04"],
-                    ]
-                    door_delays = [0.2, 0.4, 0.6, 0.8, 1.0]
-                    exit.animate(door_images, door_delays)
+                    exit.animate(
+                        images, cfg.IMAGE_SERIES["door"][1:], cfg.DELAYS["door"]
+                    )
                     exit_opening = True
                 elif exit_opening and not exit_closing and not exit.is_animating():
                     # Animate door closing
-                    door_images.reverse()
-                    exit.animate(door_images, door_delays)
+                    exit.animate(
+                        images, cfg.IMAGE_SERIES["door"][:0:-1], cfg.DELAYS["door"]
+                    )
                     exit_closing = True
 
         # Draw item, projectile, blast, player, and enemy sprites
         [
             sprite_image_data.append(
                 items[item].draw(
-                    draw_image_x, draw_image_y, image_boundary, maze_factor
+                    cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
                 )
             )
             for item in items
         ]
         if projectile:
             sprite_image_data.append(
-                projectile.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                projectile.draw(
+                    cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                )
             )
         [
             sprite_image_data.append(
-                corn.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                corn.draw(
+                    cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                )
             )
             for corn in corns
             if corn.can_spawn()
         ]
         [
             sprite_image_data.append(
-                tomato.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                tomato.draw(
+                    cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                )
             )
             for tomato in tomatoes
             if tomato.can_spawn()
         ]
         [
             sprite_image_data.append(
-                pumpkin.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                pumpkin.draw(
+                    cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                )
             )
             for pumpkin in pumpkins
             if pumpkin.can_spawn()
         ]
         if blast:
             sprite_image_data.append(
-                blast.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                blast.draw(
+                    cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                )
             )
         sprite_image_data.append(
-            player.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+            player.draw(cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor)
         )
 
         # Draw exit again overtop player if door closing
         if exit_closing:
             sprite_image_data.append(
-                exit.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                exit.draw(
+                    cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                )
             )
 
         # Update screen if necessasry
         if screen_change:
             # Clear screen and re-draw background
-            screen.fill(black)
+            screen.fill(cfg.COLORS["black"])
             screen.blit(area_surf, (0, 0))
 
             # Print controls
-            black_rect = pygame.Rect(1130, 290, 450, 300)
-            screen.fill(black, black_rect)
-            for row, text_line in enumerate(controls_text[controls_option]):
-                text_surface = font.render(text_line, True, white)
-                screen.blit(text_surface, (1140, 300 + row * 50))
+            black_rect = pygame.Rect(cfg.BLACK_RECTS["controls"])
+            screen.fill(cfg.COLORS["black"], black_rect)
+            for row, text_line in enumerate(cfg.CONTROLS_TEXT[controls_option]):
+                text_surface = font.render(text_line, True, cfg.COLORS["white"])
+                locs = cfg.TEXT_LOC["controls"]
+                screen.blit(text_surface, (locs[0], locs[1] + row * locs[2]))
 
-            # Print score and lives
-            text_surface = font.render(str(score), True, white)
-            screen.blit(text_surface, (1250, 100))
-            lives_color = red if lives < 2 else (orange if lives < 5 else green)
+            # Print score
+            text_surface = font.render(str(score), True, cfg.COLORS["white"])
+            locs = cfg.TEXT_LOC["score_value"]
+            screen.blit(text_surface, (locs[0], locs[1]))
+
+            # Print lives
+            lives_color = (
+                cfg.COLORS["red"]
+                if lives < 2
+                else (cfg.COLORS["orange"] if lives < 5 else cfg.COLORS["green"])
+            )
             text_surface = font.render(str(max(0, lives)), True, lives_color)
-            screen.blit(text_surface, (1250, 150))
+            locs = cfg.TEXT_LOC["lives_value"]
+            screen.blit(text_surface, (locs[0], locs[1]))
 
             # Print sprites
             for item in sprite_image_data:
@@ -966,13 +849,13 @@ while running:
         if player.can_spawn():
             if lives >= 0:
                 sounds["player_hit"].play()
-            time.sleep(0.5)
+            time.sleep(cfg.PAUSES["player_hit_enemy"])
             # Update game clock at end of delay
             game_time.tick()
 
         # Change to the next level if door closing animation finished
         if exit_closing and not exit.is_animating():
-            time.sleep(0.5)
+            time.sleep(cfg.PAUSES["door_closed"])
             if level_index >= len(levels) - 1:
                 level_index = 0
                 reached_last_level = True
@@ -982,24 +865,24 @@ while running:
 
         # Restart game if lives expended
         if lives < 0:
-            for row, text_line in enumerate(endgame_strings):
-                text_surface = font.render(text_line, True, yellow)
-                screen.blit(text_surface, (1140, 200 + row * 50))
+            for row, text_line in enumerate(cfg.ENDGAME_STRINGS):
+                text_surface = font.render(text_line, True, cfg.COLORS["yellow"])
+                locs = cfg.TEXT_LOC["endgame"]
+                screen.blit(text_surface, (locs[0], locs[1] + row * locs[2]))
             level_index = 0
             reached_last_level = False
             score = 0
-            lives = 5
+            lives = cfg.LIVES_DEFAULT
             game_intro = True
             sounds["endgame"].play()
             pygame.display.flip()
-            time.sleep(3)
+            time.sleep(cfg.PAUSES["endgame"])
 
     elif paused:
         if need_pause_text:
-            text_surface = font.render(
-                "Game paused. Press Pause button to resume.", True, white
-            )
-            screen.blit(text_surface, (500, 850))
+            text_surface = font.render(cfg.PAUSE_TEXT, True, cfg.COLORS["white"])
+            locs = cfg.TEXT_LOC["pause"]
+            screen.blit(text_surface, (locs[0], locs[1]))
             pygame.display.flip()
             need_pause_text = False
 

@@ -259,7 +259,11 @@ class Sprite:
         return draw_image, image_rect
 
     # Method to initialize animation
-    def animate(self, images, time_delays):
+    def animate(self, all_images, image_names, time_delays):
+        images = []
+        for image_str in image_names:
+            images.append(all_images[image_str])
+
         keys = ["image", "time_delay"]
         for image, time_delay in zip(images, time_delays):
             self.animation_sequence.append(dict(zip(keys, [image, time_delay])))
