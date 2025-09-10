@@ -4,6 +4,8 @@ import time
 import pygame
 from rect.draw import draw_maze
 from asset.sprite import Sprite
+from asset.player import Player
+from asset.enemy import Enemy
 from grid.utils import invert_maze_to_grid
 from utils.exceptions import CustomError
 from fileio.export import export_settings, move_one_file
@@ -310,7 +312,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             pumpkins = []
             for i in range(num_corn):
                 corns.append(
-                    Sprite(
+                    Enemy(
                         "corn",
                         images["corn"],
                         asset_coord.get("E"),
@@ -322,7 +324,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
                 )
             for i in range(num_tomato):
                 tomatoes.append(
-                    Sprite(
+                    Enemy(
                         "tomato",
                         images["tomato"],
                         asset_coord.get("E"),
@@ -334,7 +336,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
                 )
             for i in range(num_pumpkin):
                 pumpkins.append(
-                    Sprite(
+                    Enemy(
                         "pumpkin",
                         images["pumpkin"],
                         asset_coord.get("E"),

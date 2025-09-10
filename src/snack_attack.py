@@ -7,6 +7,8 @@ from title.intro import run_title_screen
 from utils.exceptions import CustomError
 from rect.draw import draw_maze
 from asset.sprite import Sprite
+from asset.player import Player
+from asset.enemy import Enemy
 from grid.utils import invert_maze_to_grid
 from fileio.export import export_settings, move_one_file
 from fileio.load import (
@@ -499,7 +501,7 @@ while running:
                 )
 
         # Initialize player
-        player = Sprite(
+        player = Player(
             "player",
             images["combine"],
             asset_coord.get("S"),
@@ -515,7 +517,7 @@ while running:
         pumpkins = []
         for i in range(num_corn):
             corns.append(
-                Sprite(
+                Enemy(
                     "corn",
                     images["corn"],
                     asset_coord.get("E"),
@@ -527,7 +529,7 @@ while running:
             )
         for i in range(num_tomato):
             tomatoes.append(
-                Sprite(
+                Enemy(
                     "tomato",
                     images["tomato"],
                     asset_coord.get("E"),
@@ -539,7 +541,7 @@ while running:
             )
         for i in range(num_pumpkin):
             pumpkins.append(
-                Sprite(
+                Enemy(
                     "pumpkin",
                     images["pumpkin"],
                     asset_coord.get("E"),
@@ -620,60 +622,7 @@ while running:
 
         # Player movement input
         keys = pygame.key.get_pressed()
-        if controls_option == 0:
-            if (
-                not keys[pygame.K_d]
-                and not keys[pygame.K_a]
-                and not keys[pygame.K_w]
-                and not keys[pygame.K_s]
-            ):
-                player.set_desired_direction(0, 0)  # stop
-            elif key_order and key_order[-1] == pygame.K_d:
-                player.set_desired_direction(1, 0)  # right
-            elif key_order and key_order[-1] == pygame.K_a:
-                player.set_desired_direction(-1, 0)  # left
-            elif key_order and key_order[-1] == pygame.K_w:
-                player.set_desired_direction(0, -1)  # up
-            elif key_order and key_order[-1] == pygame.K_s:
-                player.set_desired_direction(0, 1)  # down
-        elif controls_option == 1:
-            if (
-                not keys[pygame.K_l]
-                and not keys[pygame.K_j]
-                and not keys[pygame.K_i]
-                and not keys[pygame.K_k]
-            ):
-                player.set_desired_direction(0, 0)  # stop
-            elif key_order and key_order[-1] == pygame.K_l:
-                player.set_desired_direction(1, 0)  # right
-            elif key_order and key_order[-1] == pygame.K_j:
-                player.set_desired_direction(-1, 0)  # left
-            elif key_order and key_order[-1] == pygame.K_i:
-                player.set_desired_direction(0, -1)  # up
-            elif key_order and key_order[-1] == pygame.K_k:
-                player.set_desired_direction(0, 1)  # down
-        elif controls_option == 2:
-            if keys[pygame.K_d]:
-                player.set_desired_direction(1, 0)  # right
-            elif keys[pygame.K_a]:
-                player.set_desired_direction(-1, 0)  # left
-            elif keys[pygame.K_w]:
-                player.set_desired_direction(0, -1)  # up
-            elif keys[pygame.K_s]:
-                player.set_desired_direction(0, 1)  # down
-            elif keys[pygame.K_SPACE]:
-                player.set_desired_direction(0, 0)  # stop
-        else:
-            if keys[pygame.K_l]:
-                player.set_desired_direction(1, 0)  # right
-            elif keys[pygame.K_j]:
-                player.set_desired_direction(-1, 0)  # left
-            elif keys[pygame.K_i]:
-                player.set_desired_direction(0, -1)  # up
-            elif keys[pygame.K_k]:
-                player.set_desired_direction(0, 1)  # down
-            elif keys[pygame.K_SPACE]:
-                player.set_desired_direction(0, 0)  # stop
+        player.control_direction(keys, key_order, controls_option)
 
         # Save history of direction for use with exit animation
         if player.get_direction() != (0, 0):
