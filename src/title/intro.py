@@ -67,7 +67,8 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds):
     settings = read_csv_dict("../assets/settings/config.csv")
     for dict in settings:
         for key, value in dict.items():
-            if key == "maze_fidelity": maze_fidelity = value
+            if key == "maze_fidelity":
+                maze_fidelity = value
     if maze_fidelity == "fine":
         maze_fidelity_index = 2
         maze_factor = 1
@@ -200,7 +201,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds):
                     # Get variables which are affected by maze fidelity
                     level_speeds, game_tick, maze_grid = perform_factoring(
                         maze_width, maze_height, block_width, maze_path, maze_factor
-                    )                    
+                    )
                     create_sprites = True
                     rungame = False
                     f5_pressed = False
@@ -243,10 +244,10 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds):
             )
 
             # Display title text
-    # title_text = "Snack Attack"
-    # author_text = "Programmed in Python by Tim Roble"
-    # version_text = "Version 1.0.0, September 2025"
-    # proceed_text = "Press Spacebar to Start Game"
+            # title_text = "Snack Attack"
+            # author_text = "Programmed in Python by Tim Roble"
+            # version_text = "Version 1.0.0, September 2025"
+            # proceed_text = "Press Spacebar to Start Game"
 
             text_surface = font_large.render(title_text, True, white)
             screen.blit(text_surface, (275, 200))
@@ -266,7 +267,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds):
             level_speed = maze_metadata.get("level_speed")
             num_corn = ast.literal_eval(maze_metadata.get("corn_quantity"))
             num_tomato = ast.literal_eval(maze_metadata.get("tomato_quantity"))
-            num_pumpkin = ast.literal_eval(maze_metadata.get("pumpkin_quantity"))            
+            num_pumpkin = ast.literal_eval(maze_metadata.get("pumpkin_quantity"))
 
             # Assign appropriate enemy respawn speed, defaulting to slow
             if level_speed in spawn_speeds.keys():
@@ -295,7 +296,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds):
                     int(asset_coord[dict.get("letter")][0] / maze_factor),
                     int(asset_coord[dict.get("letter")][1] / maze_factor),
                 )
-            
+
             # Initialize items
             items = {}
             for key, value in asset_coord.items():

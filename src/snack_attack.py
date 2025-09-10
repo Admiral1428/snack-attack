@@ -10,6 +10,7 @@ from asset.sprite import Sprite
 from grid.utils import invert_maze_to_grid
 from fileio.load import (
     import_image_dir,
+    import_sound_dir,
     get_levels,
     read_csv_dict,
     read_csv_path,
@@ -22,6 +23,7 @@ if os.name == "nt":
 # Initialize pygame modules
 pygame.init()
 pygame.font.init()
+pygame.mixer.init()
 
 # Use lucidaconsole text for retro look
 font = pygame.font.SysFont("lucidaconsole", 26)
@@ -101,7 +103,7 @@ how_to_strings = [
     "Pause = Pause game",
     "F1 = Change controls",
     "F10 = Skip Level",
-    "Escape = Title Screen"
+    "Escape = Title Screen",
 ]
 
 # Controls option and text
@@ -163,6 +165,9 @@ for image in images:
 
 # Store dictionary with item image definitions
 item_image_defs = {"1": "strawberry", "2": "cherry", "3": "banana", "4": "grape"}
+
+# Get sound effects
+sounds = import_sound_dir("../assets/sounds/")
 
 # Get levels and their supporting file paths
 level_dir = "../assets/levels/"
@@ -257,6 +262,7 @@ while running:
                 score = 0
                 lives = 5
                 game_intro = True
+                sounds["endgame"].play()
                 pygame.display.flip()
                 time.sleep(3)
             if event.key == pygame.K_F1 and f1_pressed:
@@ -270,6 +276,7 @@ while running:
 
     # Show game intro screen
     if game_intro:
+        sounds["intro"].play()
         running = run_title_screen(screen, images, item_image_defs, spawn_speeds)
 
         # Set variables once title exited
@@ -277,7 +284,8 @@ while running:
         settings = read_csv_dict("../assets/settings/config.csv")
         for dict in settings:
             for key, value in dict.items():
-                if key == "maze_fidelity": maze_fidelity = value
+                if key == "maze_fidelity":
+                    maze_fidelity = value
         if maze_fidelity == "fine":
             maze_fidelity_index = 2
             maze_factor = 1
@@ -305,7 +313,8 @@ while running:
         # frantic:  360 * 2 = 720
         game_tick = 1 / (720 / maze_factor)
 
-        if running: maze_draw = True
+        if running:
+            maze_draw = True
         game_intro = False
     # Draw maze and instructions on screen
     if maze_draw:
@@ -517,6 +526,7 @@ while running:
         exit_found = False
         screen_change = True
         create_sprites = False
+        exit_sound_played = False
         spawned_enemies = 0
 
     # Primary game loop
@@ -664,6 +674,7 @@ while running:
                 projectile_direction[0], projectile_direction[1]
             )
             proj_delta_dist = 0
+            sounds["proj_fire"].play()
 
         # Move player, projectiles, and enemies
         if not exit_found:
@@ -707,9 +718,17 @@ while running:
                     )
                 player.perform_move(maze_grid, game_tick)
                 screen_change = True
+            else:
+                if not exit_sound_played:
+                    sounds["exit"].play()
+                    exit_sound_played = True
 
         # Remove projectiles which hit an enemy or a wall, then draw blast
         if projectile and (projectile.is_destroyed() or projectile.is_stopped()):
+            if projectile.is_destroyed():
+                sounds["proj_hit_enemy"].play()
+            else:
+                sounds["proj_hit_wall"].play()
             screen_change = True
             projectile_location = projectile.get_center_position()
             projectile = []
@@ -816,6 +835,8 @@ while running:
                     screen_change = True
                     score += 200
                     delete_items.append(item)
+                    if len(items) > 1:
+                        sounds["item"].play()
 
             # If no more enemies, remove remaining items
             enemy_collection = corns + tomatoes + pumpkins
@@ -834,7 +855,10 @@ while running:
                 screen_change = True
                 # Reward player with extra life if all items collected
                 if not all_destroyed:
+                    sounds["extra_life"].play()
                     lives += 1
+                else:
+                    sounds["item"].play()
                 exit = Sprite(
                     "H",
                     images["door"],
@@ -959,6 +983,8 @@ while running:
 
         # Brief pause once the player has collided with an enemy
         if player.can_spawn():
+            if lives >= 0:
+                sounds["player_hit"].play()
             time.sleep(0.5)
             # Update game clock at end of delay
             game_time.tick()
@@ -983,6 +1009,7 @@ while running:
             score = 0
             lives = 5
             game_intro = True
+            sounds["endgame"].play()
             pygame.display.flip()
             time.sleep(3)
 
