@@ -58,9 +58,7 @@ if maze_fidelity_index == None or maze_factor == None:
 
 # Dimensions for window
 width, height = (1600, 900)
-aspect_ratio = width / height
-screen = pygame.display.set_mode((width, height), pygame.RESIZABLE, vsync=1)
-game_surface = pygame.Surface((width, height))
+screen = pygame.display.set_mode((width, height), vsync=1)
 
 # Define maze properties
 maze_width = 256
