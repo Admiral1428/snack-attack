@@ -2,6 +2,7 @@ import os
 import ast
 import time
 import pygame
+from settings import config as cfg
 from rect.draw import draw_maze
 from asset.sprite import Sprite
 from asset.player import Player
@@ -36,123 +37,39 @@ def perform_factoring(maze_width, maze_height, block_width, maze_path, maze_fact
         block_width_scaled,
     )
 
-    # Level speed definitions (coordinates per game tick for moving sprites)
-    level_speeds = {
-        "slow": int(144 / maze_factor),
-        "medium": int(180 / maze_factor),
-        "fast": int(240 / maze_factor),
-        "frantic": (360 / maze_factor),
-    }
+    # Scale game tick based on animation smoothness
+    game_tick = cfg.GAME_TICK * maze_factor
 
-    # Set game tick speed to such that movement calculation is no more than one
-    # coordinate per tick, and defined speeds have meaningful changes to gameplay
-    # e.g., ticks needed to move one coordinate:
-    # slow:     144 * 5 = 720
-    # medium:   180 * 4 = 720
-    # fast:     240 * 3 = 720
-    # frantic:  360 * 2 = 720
-    game_tick = 1 / (720 / maze_factor)
-
-    return level_speeds, game_tick, maze_grid
+    return game_tick, maze_grid
 
 
-def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelity):
+def run_title_screen(screen, images, maze_fidelity):
 
     # Use lucidaconsole text for retro look
     font_large = pygame.font.SysFont("lucidaconsole", 80)
     font_medium = pygame.font.SysFont("lucidaconsole", 36)
     font = pygame.font.SysFont("lucidaconsole", 26)
 
-    # Define maze fidelity options
-    maze_fidelity_opts = ["coarse", "normal", "fine"]
-    maze_fidelity_factors = [4, 2, 1]
-
     maze_fidelity_index = None
     maze_factor = None
-    for index, opt in enumerate(maze_fidelity_opts):
+    for index, opt in enumerate(cfg.MAZE_FIDELITY_OPTS):
         if maze_fidelity == opt:
             maze_fidelity_index = index
-            maze_factor = maze_fidelity_factors[index]
+            maze_factor = cfg.MAZE_FIDELITY_FACTORS[index]
     if maze_fidelity_index == None or maze_factor == None:
-        raise CustomError("Maze fidelity not a valid option.")
-
-    # Window dimensions
-    width, height = (1600, 900)
-
-    # Define maze properties
-    maze_width = 256
-    maze_height = 192
-    block_width = 12
-    min_block_spacing = 4
-    draw_image_x = 20
-    draw_image_y = 20
-    image_boundary = 4
-
-    # Define colors
-    white = (255, 255, 255)
-    black = (0, 0, 0)
-    teal = (0, 168, 168)
-    yellow = (255, 255, 0)
-    orange = (255, 128, 0)
-    green = (0, 255, 0)
-    dkgreen = (0, 102, 0)
-    purple = (128, 0, 128)
-    magenta = (253, 61, 181)
-    red = (255, 0, 0)
-    blue = (0, 0, 255)
-    gray = (128, 128, 128)
-
-    # Create a list of colors to be used for selecting maze wall color
-    maze_colors = [
-        teal,
-        yellow,
-        orange,
-        green,
-        dkgreen,
-        purple,
-        magenta,
-        red,
-        blue,
-        gray,
-    ]
+        raise CustomError(cfg.ERROR_STRINGS["maze_fidelity"])
 
     # Scale variables
-    scale_factor = 4
-    maze_width *= scale_factor
-    maze_height *= scale_factor
-    block_width *= scale_factor
-    min_block_spacing *= scale_factor
-    image_boundary *= scale_factor
+    maze_width = cfg.MAZE_WIDTH * cfg.SCALE_FACTOR
+    maze_height = cfg.MAZE_HEIGHT * cfg.SCALE_FACTOR
+    block_width = cfg.BLOCK_WIDTH * cfg.SCALE_FACTOR
+    image_boundary = cfg.IMAGE_BOUNDARY * cfg.SCALE_FACTOR
 
     # Fill background with black color
-    screen.fill(black)
-
-    # Display title text
-    title_text = "Snack Attack"
-    author_text = "Programmed in Python by Tim Roble"
-    version_text = "Version 1.0.0, September 2025"
-    proceed_text = "Press Spacebar to Start Game"
-
-    # Display animation information
-    info_strings = [
-        "Press F5 to cycle",
-        "animation smoothness",
-        "",
-        "Current option: ",
-        "",
-        "",
-        "'normal' or 'fine' options",
-        "may be laggy on slower",
-        "PCs. Sprites should",
-        "maintain same speed when",
-        "toggling. If they appear",
-        "slower, revert to a more",
-        "coarse setting.",
-    ]
+    screen.fill(cfg.COLORS["black"])
 
     # Get levels and their supporting file paths
-    level_dir = "../assets/title/"
-    levels = get_levels(level_dir)
+    levels = get_levels(cfg.DIRS["title"])
     level_index = 0
 
     # Update initial display
@@ -177,23 +94,25 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_F5 and f5_pressed:
                     # Cycle to next maze fidelity
-                    if maze_fidelity_index >= len(maze_fidelity_opts) - 1:
+                    if maze_fidelity_index >= len(cfg.MAZE_FIDELITY_OPTS) - 1:
                         maze_fidelity_index = 0
                     else:
                         maze_fidelity_index += 1
-                    maze_factor = maze_fidelity_factors[maze_fidelity_index]
-                    maze_fidelity = maze_fidelity_opts[maze_fidelity_index]
+                    maze_factor = cfg.MAZE_FIDELITY_FACTORS[maze_fidelity_index]
+                    maze_fidelity = cfg.MAZE_FIDELITY_OPTS[maze_fidelity_index]
 
                     # Load then re-export settings file
-                    settings = read_csv_dict("../assets/settings/config.csv")
+                    settings = read_csv_dict(
+                        cfg.DIRS["settings"] + cfg.FILES["settings"]
+                    )
                     for key, value in settings[0].items():
                         if key == "maze_fidelity":
                             settings[0][key] = maze_fidelity
                     export_settings(settings[0])
-                    move_one_file("config.csv", ".", "../assets/settings/")
+                    move_one_file(cfg.FILES["settings"], ".", cfg.DIRS["settings"])
 
                     # Get variables which are affected by maze fidelity
-                    level_speeds, game_tick, maze_grid = perform_factoring(
+                    game_tick, maze_grid = perform_factoring(
                         maze_width, maze_height, block_width, maze_path, maze_factor
                     )
                     create_sprites = True
@@ -207,26 +126,29 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             maze_path = read_csv_path(levels[level_index].get("path"))
 
             # Perform clearing of screen to remove old maze and clear up memory
-            screen.fill(black)
+            screen.fill(cfg.COLORS["black"])
             pygame.display.flip()
 
             # Print animation information
-            for row, text_line in enumerate(info_strings):
+            for row, text_line in enumerate(cfg.ANIMATION_STRINGS):
                 if row == 4:
-                    text_surface = font.render(maze_fidelity, True, yellow)
+                    text_surface = font.render(
+                        maze_fidelity, True, cfg.COLORS["yellow"]
+                    )
                 else:
-                    text_surface = font.render(text_line, True, white)
-                screen.blit(text_surface, (1140, 50 + row * 50))
+                    text_surface = font.render(text_line, True, cfg.COLORS["white"])
+                loc = cfg.TEXT_LOC["animation_info"]
+                screen.blit(text_surface, (loc[0], loc[1] + row * loc[2]))
 
             draw_maze(
-                draw_image_x,
-                draw_image_y,
+                cfg.DRAW_IMAGE_X,
+                cfg.DRAW_IMAGE_Y,
                 image_boundary,
                 maze_width,
                 maze_height,
                 block_width,
                 ast.literal_eval(maze_metadata.get("maze_color")),
-                black,
+                cfg.COLORS["black"],
                 maze_path,
                 screen,
                 0,
@@ -234,27 +156,31 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             )
 
             # Get variables which are affected by maze fidelity
-            level_speeds, game_tick, maze_grid = perform_factoring(
+            game_tick, maze_grid = perform_factoring(
                 maze_width, maze_height, block_width, maze_path, maze_factor
             )
 
-            # Display title text
-            # title_text = "Snack Attack"
-            # author_text = "Programmed in Python by Tim Roble"
-            # version_text = "Version 1.0.0, September 2025"
-            # proceed_text = "Press Spacebar to Start Game"
+            # Game title, author, version, and begin game text
+            text_surface = font_large.render(cfg.TITLE_TEXT, True, cfg.COLORS["white"])
+            loc = cfg.TEXT_LOC["title"]
+            screen.blit(text_surface, (loc[0], loc[1]))
 
-            text_surface = font_large.render(title_text, True, white)
-            screen.blit(text_surface, (275, 200))
-            text_surface = font.render(author_text, True, white)
-            screen.blit(text_surface, (300, 320))
-            text_surface = font.render(version_text, True, white)
-            screen.blit(text_surface, (325, 370))
-            text_surface = font_medium.render(proceed_text, True, white)
-            screen.blit(text_surface, (260, 450))
+            text_surface = font.render(cfg.AUTHOR_TEXT, True, cfg.COLORS["white"])
+            loc = cfg.TEXT_LOC["author"]
+            screen.blit(text_surface, (loc[0], loc[1]))
+
+            text_surface = font.render(cfg.VERSION_TEXT, True, cfg.COLORS["white"])
+            loc = cfg.TEXT_LOC["version"]
+            screen.blit(text_surface, (loc[0], loc[1]))
+
+            text_surface = font_medium.render(
+                cfg.PROCEED_TEXT, True, cfg.COLORS["white"]
+            )
+            loc = cfg.TEXT_LOC["proceed"]
+            screen.blit(text_surface, (loc[0], loc[1]))
 
             # Save subsurface for game loop re-draw
-            rect_area = pygame.Rect(0, 0, width, height)
+            rect_area = pygame.Rect(0, 0, cfg.WIDTH, cfg.HEIGHT)
             temp_surf = screen.subsurface(rect_area)
             area_surf = temp_surf.copy()
 
@@ -265,10 +191,10 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             num_pumpkin = ast.literal_eval(maze_metadata.get("pumpkin_quantity"))
 
             # Assign appropriate enemy respawn speed, defaulting to slow
-            if level_speed in spawn_speeds.keys():
-                seconds_to_spawn = spawn_speeds.get(level_speed)
+            if level_speed in cfg.SPAWN_SPEEDS.keys():
+                seconds_to_spawn = cfg.SPAWN_SPEEDS.get(level_speed)
             else:
-                seconds_to_spawn = spawn_speeds.get("slow")
+                seconds_to_spawn = cfg.SPAWN_SPEEDS.get("slow")
 
             # Set flags
             create_sprites = True
@@ -277,10 +203,10 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
         # Create Sprite objects
         if create_sprites:
             # Assign appropriate sprite speed, defaulting to slow
-            if level_speed in level_speeds.keys():
-                pixels_per_second = level_speeds.get(level_speed)
+            if level_speed in cfg.LEVEL_SPEEDS.keys():
+                pixels_per_second = int(cfg.LEVEL_SPEEDS.get(level_speed) / maze_factor)
             else:
-                pixels_per_second = level_speeds.get("slow")
+                pixels_per_second = int(cfg.LEVEL_SPEEDS.get("slow") / maze_factor)
 
             # Asset coordinates
             asset_coord = {}
@@ -295,10 +221,10 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             # Initialize items
             items = {}
             for key, value in asset_coord.items():
-                if key in item_image_defs:
+                if key in cfg.ITEM_IMAGE_DEFS:
                     items[key] = Sprite(
                         key,
-                        images[item_image_defs.get(key)],
+                        images[cfg.ITEM_IMAGE_DEFS.get(key)],
                         asset_coord.get(key),
                         0,
                         False,
@@ -314,7 +240,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
                 corns.append(
                     Enemy(
                         "corn",
-                        images["corn"],
+                        images[cfg.IMAGE_SERIES["corn"][0]],
                         asset_coord.get("E"),
                         pixels_per_second,
                         False,
@@ -326,7 +252,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
                 tomatoes.append(
                     Enemy(
                         "tomato",
-                        images["tomato"],
+                        images[cfg.IMAGE_SERIES["tomato"][0]],
                         asset_coord.get("E"),
                         pixels_per_second,
                         False,
@@ -338,7 +264,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
                 pumpkins.append(
                     Enemy(
                         "pumpkin",
-                        images["pumpkin"],
+                        images[cfg.IMAGE_SERIES["pumpkin"][0]],
                         asset_coord.get("E"),
                         pixels_per_second,
                         False,
@@ -417,21 +343,25 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             [
                 sprite_image_data.append(
                     items[item].draw(
-                        draw_image_x, draw_image_y, image_boundary, maze_factor
+                        cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
                     )
                 )
                 for item in items
             ]
             [
                 sprite_image_data.append(
-                    corn.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                    corn.draw(
+                        cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                    )
                 )
                 for corn in corns
                 if corn.can_spawn()
             ]
             [
                 sprite_image_data.append(
-                    tomato.draw(draw_image_x, draw_image_y, image_boundary, maze_factor)
+                    tomato.draw(
+                        cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
+                    )
                 )
                 for tomato in tomatoes
                 if tomato.can_spawn()
@@ -439,7 +369,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             [
                 sprite_image_data.append(
                     pumpkin.draw(
-                        draw_image_x, draw_image_y, image_boundary, maze_factor
+                        cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
                     )
                 )
                 for pumpkin in pumpkins
@@ -449,18 +379,19 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelit
             # Update screen if necessasry
             if screen_change:
                 # Clear screen and re-draw background
-                screen.fill(black)
+                screen.fill(cfg.COLORS["black"])
                 screen.blit(area_surf, (0, 0))
 
-                black_rect = pygame.Rect(1130, 240, 300, 50)
-                screen.fill(black, black_rect)
+                black_rect = pygame.Rect(cfg.BLACK_RECTS["animation"])
+                screen.fill(cfg.COLORS["black"], black_rect)
                 # Print animation information
-                # Print animation information
-                for row, text_line in enumerate(info_strings):
+                for row, text_line in enumerate(cfg.ANIMATION_STRINGS):
                     if row == 4:
-                        text_surface = font.render(maze_fidelity, True, yellow)
+                        text_surface = font.render(
+                            maze_fidelity, True, cfg.COLORS["yellow"]
+                        )
                     else:
-                        text_surface = font.render(text_line, True, white)
+                        text_surface = font.render(text_line, True, cfg.COLORS["white"])
                     screen.blit(text_surface, (1140, 50 + row * 50))
 
                 # Print sprites

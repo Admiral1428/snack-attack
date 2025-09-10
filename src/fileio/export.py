@@ -1,6 +1,7 @@
 import os
 import shutil
 import csv
+from settings import config as cfg
 
 
 # Function to export path coordinates to csv file, adjusted for the offset
@@ -11,7 +12,7 @@ def export_path_coords_to_csv(coords, draw_image_x, draw_image_y, image_boundary
         for t in coords
     ]
 
-    with open("level_path_coordinates.csv", "w", newline="") as csvfile:
+    with open(cfg.FILES["path_coordinates"], "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["X", "Y"])  # Write header row
         writer.writerows(shifted_coords)
@@ -29,7 +30,7 @@ def export_asset_coords_to_csv(asset_defs, draw_image_x, draw_image_y, image_bou
             )
 
     fieldnames = asset_defs[0].keys()
-    with open("level_asset_coordinates.csv", "w", newline="") as csvfile:
+    with open(cfg.FILES["asset_coordinates"], "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(asset_defs)
@@ -38,7 +39,7 @@ def export_asset_coords_to_csv(asset_defs, draw_image_x, draw_image_y, image_bou
 # Function to export dictionary containing metadata
 def export_metadata(maze_metadata):
     fieldnames = maze_metadata.keys()
-    with open("level_metadata.csv", "w", newline="") as csvfile:
+    with open(cfg.FILES["metadata"], "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(maze_metadata.keys())
         writer.writerow(maze_metadata.values())
@@ -47,7 +48,7 @@ def export_metadata(maze_metadata):
 # Function to export dictionary containing settings
 def export_settings(settings):
     fieldnames = settings.keys()
-    with open("config.csv", "w", newline="") as csvfile:
+    with open(cfg.FILES["settings"], "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(settings.keys())
         writer.writerow(settings.values())
@@ -55,7 +56,7 @@ def export_settings(settings):
 
 # Funtion to draw maze grid to text file
 def export_maze_grid_to_txt(maze_grid):
-    f = open("level_grid.txt", "w")
+    f = open(cfg.FILES["grid"], "w")
     for row in maze_grid:
         row_str = ",".join(map(str, row))
         f.write(row_str + "\n")

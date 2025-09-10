@@ -3,6 +3,7 @@ import pygame
 import time
 import tkinter as tk
 from tkinter import messagebox, filedialog
+from settings import config as cfg
 from rect.utils import define_rect, shift_rect_to_divisible_pos
 from rect.draw import draw_square, draw_asset, draw_maze
 from grid.utils import invert_maze_to_grid, grid_space
@@ -37,76 +38,53 @@ font = pygame.font.SysFont("Arial", 30)
 font_small = pygame.font.SysFont("Arial", 26)
 
 # Dimensions for window
-width, height = (1600, 900)
-screen = pygame.display.set_mode((width, height))
-
-# Define maze properties
-maze_width_unscaled = 256
-maze_height_unscaled = 192
-block_width_unscaled = 12
-min_block_spacing = 4
-draw_image_x = 20
-draw_image_y = 20
-image_boundary = 4
+screen = pygame.display.set_mode((cfg.WIDTH, cfg.HEIGHT), vsync=1)
 
 # Set window title
 pygame.display.set_caption("Level Builder")
 
-# Define colors
-white = (255, 255, 255)
-black = (0, 0, 0)
-teal = (0, 168, 168)
-yellow = (255, 255, 0)
-orange = (255, 128, 0)
-green = (0, 255, 0)
-dkgreen = (0, 102, 0)
-purple = (128, 0, 128)
-magenta = (253, 61, 181)
-red = (255, 0, 0)
-blue = (0, 0, 255)
-gray = (128, 128, 128)
-ltgray = (212, 212, 212)
-
 # Create a list of colors to be used for selecting maze wall color
-maze_colors = [teal, yellow, orange, green, dkgreen, purple, magenta, red, blue, gray]
+maze_colors = []
 maze_color_index = 0
+for key, value in cfg.COLORS.items():
+    if key not in ["white", "black", "ltgray"]:
+        maze_colors.append(value)
 
 # Scale variables
-scale_factor = 4
-maze_width = maze_width_unscaled * scale_factor
-maze_height = maze_height_unscaled * scale_factor
-block_width = block_width_unscaled * scale_factor
-min_block_spacing *= scale_factor
-image_boundary *= scale_factor
+maze_width = cfg.MAZE_WIDTH * cfg.SCALE_FACTOR
+maze_height = cfg.MAZE_HEIGHT * cfg.SCALE_FACTOR
+block_width = cfg.BLOCK_WIDTH * cfg.SCALE_FACTOR
+image_boundary = cfg.IMAGE_BOUNDARY * cfg.SCALE_FACTOR
+min_block_spacing = cfg.MIN_BLOCK_SPACING * cfg.SCALE_FACTOR
 
 # Fill background with white color
-screen.fill(white)
+screen.fill(cfg.COLORS["white"])
 
 # Draw empty maze onto screen, with a gray boundary
 # and inside drawable teal area
 draw_maze(
-    draw_image_x,
-    draw_image_y,
+    cfg.DRAW_IMAGE_X,
+    cfg.DRAW_IMAGE_Y,
     image_boundary,
     maze_width,
     maze_height,
     block_width,
-    ltgray,
-    ltgray,
+    cfg.COLORS["ltgray"],
+    cfg.COLORS["ltgray"],
     [],
     screen,
     0,
     None,
 )
 draw_maze(
-    draw_image_x + image_boundary,
-    draw_image_y + image_boundary,
+    cfg.DRAW_IMAGE_X + image_boundary,
+    cfg.DRAW_IMAGE_Y + image_boundary,
     0,
     maze_width,
     maze_height,
     block_width,
-    teal,
-    teal,
+    cfg.COLORS["teal"],
+    cfg.COLORS["teal"],
     [],
     screen,
     0,
@@ -114,79 +92,75 @@ draw_maze(
 )
 
 # Display instruction text
-text_strings = [
-    "Left click or use arrow keys to",
-    "draw maze. Right click to undo.",
-    "",
-    "W to cycle wall color",
-    "A to end maze and place assets",
-    "P to save screenshot",
-    "F to cycle level speed:",
-    "",
-    "J to cycle # corn enemies",
-    "K to cycle # tomato enemies",
-    "L to cycle # pumpkin enemies",
-]
-for row, text_line in enumerate(text_strings):
+for row, text_line in enumerate(cfg.DRAW_STRINGS):
     if row <= 7:
-        selected_color = black
+        selected_color = cfg.COLORS["black"]
     elif row == 8:
-        selected_color = dkgreen
+        selected_color = cfg.COLORS["dkgreen"]
     elif row == 9:
-        selected_color = red
+        selected_color = cfg.COLORS["red"]
     else:
-        selected_color = orange
+        selected_color = cfg.COLORS["orange"]
     text_surface = font.render(text_line, True, selected_color)
-    screen.blit(text_surface, (1140, 50 + row * 50))
+    loc = cfg.TEXT_LOC["maze_draw"]
+    screen.blit(text_surface, (loc[0], loc[1] + row * loc[2]))
 
 
 # Initialize number of enemies
-corn_quantities = range(9)
-tomato_quantities = range(7)
-pumpkin_quantities = range(5)
+corn_quantities = range(cfg.MAX_CORN + 1)
+tomato_quantities = range(cfg.MAX_TOMATO + 1)
+pumpkin_quantities = range(cfg.MAX_PUMPKIN + 1)
 corn_index = 0
 tomato_index = 0
 pumpkin_index = 0
 
 
 # Load enemy images and scale them
-images = import_image_dir("../assets/sprites/")
+images = import_image_dir(cfg.DIRS["images"])
 for image in images:
     images[image] = pygame.transform.scale(
         images[image],
         (
-            int(images[image].get_width() * scale_factor),
-            int(images[image].get_height() * scale_factor),
+            int(images[image].get_width() * cfg.SCALE_FACTOR),
+            int(images[image].get_height() * cfg.SCALE_FACTOR),
         ),
     )
     # Make teal the transparent color
-    images[image].set_colorkey(teal)
+    images[image].set_colorkey(cfg.COLORS["teal"])
 
 corn_image = images["corn"]
 tomato_image = images["tomato"]
 pumpkin_image = images["pumpkin"]
 
-# Initialize level speed (slow, medium, fast, frantic)
-level_speeds = ["slow", "medium", "fast", "frantic"]
+# Initialize level speed
 level_speed_index = 0
 
 # Display level speed in blue color
 # Display new number
-text_surface = font.render(str(level_speeds[level_speed_index]), True, blue)
-screen.blit(text_surface, (1450, 350))
+text_surface = font.render(
+    str(cfg.LEVEL_SPEED_ORDER[level_speed_index]), True, cfg.COLORS["blue"]
+)
+loc = cfg.TEXT_LOC["level_speed"]
+screen.blit(text_surface, (loc[0], loc[1]))
 
 # Display enemy images
-screen.blit(corn_image, (1150, 700))
-screen.blit(tomato_image, (1290, 700))
-screen.blit(pumpkin_image, (1430, 700))
+screen.blit(corn_image, cfg.IMAGE_LOC["corn"])
+screen.blit(tomato_image, cfg.IMAGE_LOC["tomato"])
+screen.blit(pumpkin_image, cfg.IMAGE_LOC["pumpkin"])
 
 # Display number of enemies below each image
-text_surface = font.render(str(corn_quantities[corn_index]), True, dkgreen)
-screen.blit(text_surface, (1165, 760))
-text_surface = font.render(str(tomato_quantities[tomato_index]), True, red)
-screen.blit(text_surface, (1305, 760))
-text_surface = font.render(str(pumpkin_quantities[pumpkin_index]), True, orange)
-screen.blit(text_surface, (1445, 760))
+text_surface = font.render(
+    str(corn_quantities[corn_index]), True, cfg.COLORS["dkgreen"]
+)
+screen.blit(text_surface, cfg.TEXT_LOC["corns"])
+text_surface = font.render(
+    str(tomato_quantities[tomato_index]), True, cfg.COLORS["red"]
+)
+screen.blit(text_surface, cfg.TEXT_LOC["tomatoes"])
+text_surface = font.render(
+    str(pumpkin_quantities[pumpkin_index]), True, cfg.COLORS["orange"]
+)
+screen.blit(text_surface, cfg.TEXT_LOC["pumpkins"])
 
 # Update initial display
 pygame.display.update()
@@ -235,61 +209,58 @@ while running:
             ]:
                 arrow_pressed = True
                 current_arrow = event.key
-            if event.key == pygame.K_p:
-                screenshot_rect = pygame.Rect(
-                    draw_image_x,
-                    draw_image_y,
-                    maze_width + 2 * image_boundary,
-                    maze_height + 2 * image_boundary,
-                )
-                sub_surface = screen.subsurface(screenshot_rect)
-                if maze_draw:
-                    screenshot_name = "level_screenshot_no_assets.png"
-                else:
-                    screenshot_name = "level_screenshot.png"
-                pygame.image.save(sub_surface, screenshot_name)
-                print(f"Screenshot saved as {screenshot_name}")
             elif event.key == pygame.K_c and not maze_draw:
                 # Warning to user that final export will need all assets
                 if len(asset_coords) < 8:
-                    messagebox.showinfo(
-                        "Warning",
-                        "Ensure all assets are placed before final export!\n\n"
-                        "If there is insufficient space, it may be necessary to exit and restart the drawing.\n\n"
-                        "Click OK then click back onto Level Builder window.",
-                    )
+                    messagebox.showinfo("Warning", cfg.MSG_STRING["all_assets"])
                 else:
+                    # Export screenshot with assets
+                    screenshot_rect = pygame.Rect(
+                        cfg.DRAW_IMAGE_X,
+                        cfg.DRAW_IMAGE_Y,
+                        maze_width + 2 * image_boundary,
+                        maze_height + 2 * image_boundary,
+                    )
+                    sub_surface = screen.subsurface(screenshot_rect)
+                    pygame.image.save(sub_surface, cfg.FILES["screenshot_assets"])
+                    print(f"Screenshot saved as {cfg.FILES["screenshot_assets"]}")
+
                     # Export path coordinates to csv
                     export_path_coords_to_csv(
-                        chosen_coords, draw_image_x, draw_image_y, image_boundary
+                        chosen_coords,
+                        cfg.DRAW_IMAGE_X,
+                        cfg.DRAW_IMAGE_Y,
+                        image_boundary,
                     )
-                    print("Level coordinates saved as level_path_coordinates.csv")
+                    print("Level coordinates saved as " + cfg.FILES["path_coordinates"])
+
                     # Export asset coordinates to csv if applicable
                     if asset_defs:
                         export_asset_coords_to_csv(
-                            asset_defs, draw_image_x, draw_image_y, image_boundary
+                            asset_defs,
+                            cfg.DRAW_IMAGE_X,
+                            cfg.DRAW_IMAGE_Y,
+                            image_boundary,
                         )
-                        print("Asset coordinates saved as level_asset_coordinates.csv")
+                        print(
+                            "Asset coordinates saved as "
+                            + cfg.FILES["asset_coordinates"]
+                        )
+
                     # Export maze metadata to csv
                     # Maze metadata
                     maze_metadata = {
                         "maze_color": maze_colors[maze_color_index],
-                        "level_speed": level_speeds[level_speed_index],
+                        "level_speed": cfg.LEVEL_SPEED_ORDER[level_speed_index],
                         "corn_quantity": corn_quantities[corn_index],
                         "tomato_quantity": tomato_quantities[tomato_index],
                         "pumpkin_quantity": pumpkin_quantities[pumpkin_index],
                     }
                     export_metadata(maze_metadata)
-                    print("Maze metadata saved as level_metadata.csv")
+                    print("Maze metadata saved as " + cfg.FILES["metadata"])
 
                     # Move maze files to a selected directory
-                    messagebox.showinfo(
-                        "Instructions",
-                        "Please create a new folder"
-                        " at the location shown in the next dialog box, then select that "
-                        "new folder.\n\nUse a folder name such as custom_map_01."
-                        "\n\nClick OK to proceed.",
-                    )
+                    messagebox.showinfo("Instructions", cfg.MSG_STRING["maze_folder"])
                     selected_directory = filedialog.askdirectory(
                         initialdir="../assets/levels/", title="Select a Directory"
                     )
@@ -302,8 +273,8 @@ while running:
                 else:
                     maze_color_index += 1
                 maze_rect = pygame.Rect(
-                    draw_image_x + image_boundary,
-                    draw_image_y + image_boundary,
+                    cfg.DRAW_IMAGE_X + image_boundary,
+                    cfg.DRAW_IMAGE_X + image_boundary,
                     maze_width,
                     maze_height,
                 )
@@ -316,18 +287,23 @@ while running:
                 pygame.display.update()
             elif event.key == pygame.K_f and maze_draw:
                 # Cycle level speed
-                if level_speed_index >= len(level_speeds) - 1:
+                if level_speed_index >= len(cfg.LEVEL_SPEED_ORDER) - 1:
                     level_speed_index = 0
                 else:
                     level_speed_index += 1
+
                 # Erase displayed speed
-                temp_rect = pygame.Rect(1450, 350, 400, 100)
-                draw_square(temp_rect, screen, white, dirty_rects)
+                temp_rect = pygame.Rect(cfg.WHITE_RECTS["speed"])
+                draw_square(temp_rect, screen, cfg.COLORS["white"], dirty_rects)
+
                 # Display new number
                 text_surface = font.render(
-                    str(level_speeds[level_speed_index]), True, blue
+                    str(cfg.LEVEL_SPEED_ORDER[level_speed_index]),
+                    True,
+                    cfg.COLORS["blue"],
                 )
-                screen.blit(text_surface, (1450, 350))
+                loc = cfg.TEXT_LOC["level_speed"]
+                screen.blit(text_surface, (loc[0], loc[1]))
                 pygame.display.update()
             elif event.key == pygame.K_j and maze_draw:
                 # Cycle corn quantity
@@ -335,14 +311,18 @@ while running:
                     corn_index = 0
                 else:
                     corn_index += 1
+
                 # Erase displayed number
-                temp_rect = define_rect((1170, 780), block_width)
-                draw_square(temp_rect, screen, white, dirty_rects)
+                loc = cfg.WHITE_RECTS["corns"]
+                temp_rect = define_rect((loc[0], loc[1]), loc[2])
+                draw_square(temp_rect, screen, cfg.COLORS["white"], dirty_rects)
+
                 # Display new number
                 text_surface = font.render(
-                    str(corn_quantities[corn_index]), True, dkgreen
+                    str(corn_quantities[corn_index]), True, cfg.COLORS["dkgreen"]
                 )
-                screen.blit(text_surface, (1165, 760))
+                loc = cfg.TEXT_LOC["corns"]
+                screen.blit(text_surface, (loc[0], loc[1]))
                 pygame.display.update()
             elif event.key == pygame.K_k and maze_draw:
                 # Cycle tomato quantity
@@ -350,14 +330,18 @@ while running:
                     tomato_index = 0
                 else:
                     tomato_index += 1
+
                 # Erase displayed number
-                temp_rect = define_rect((1310, 780), block_width)
-                draw_square(temp_rect, screen, white, dirty_rects)
+                loc = cfg.WHITE_RECTS["tomatoes"]
+                temp_rect = define_rect((loc[0], loc[1]), loc[2])
+                draw_square(temp_rect, screen, cfg.COLORS["white"], dirty_rects)
+
                 # Display new number
                 text_surface = font.render(
-                    str(tomato_quantities[tomato_index]), True, red
+                    str(tomato_quantities[tomato_index]), True, cfg.COLORS["red"]
                 )
-                screen.blit(text_surface, (1305, 760))
+                loc = cfg.TEXT_LOC["tomatoes"]
+                screen.blit(text_surface, (loc[0], loc[1]))
                 pygame.display.update()
             elif event.key == pygame.K_l and maze_draw:
                 # Cycle pumpkin quantity
@@ -365,14 +349,18 @@ while running:
                     pumpkin_index = 0
                 else:
                     pumpkin_index += 1
+
                 # Erase displayed number
-                temp_rect = define_rect((1450, 780), block_width)
-                draw_square(temp_rect, screen, white, dirty_rects)
+                loc = cfg.WHITE_RECTS["pumpkins"]
+                temp_rect = define_rect((loc[0], loc[1]), loc[2])
+                draw_square(temp_rect, screen, cfg.COLORS["white"], dirty_rects)
+
                 # Display new number
                 text_surface = font.render(
-                    str(pumpkin_quantities[pumpkin_index]), True, orange
+                    str(pumpkin_quantities[pumpkin_index]), True, cfg.COLORS["orange"]
                 )
-                screen.blit(text_surface, (1445, 760))
+                loc = cfg.TEXT_LOC["pumpkins"]
+                screen.blit(text_surface, (loc[0], loc[1]))
                 pygame.display.update()
             elif event.key == pygame.K_a:
                 # Coarsen inputs prior to creating maze grid to optimize runtime
@@ -381,12 +369,12 @@ while running:
                     coords_scaled.append(
                         (
                             int(
-                                (coord[0] - draw_image_x - image_boundary)
-                                / scale_factor
+                                (coord[0] - cfg.DRAW_IMAGE_X - image_boundary)
+                                / cfg.SCALE_FACTOR
                             ),
                             int(
-                                (coord[1] - draw_image_y - image_boundary)
-                                / scale_factor
+                                (coord[1] - cfg.DRAW_IMAGE_Y - image_boundary)
+                                / cfg.SCALE_FACTOR
                             ),
                         )
                     )
@@ -394,97 +382,53 @@ while running:
                 # Create maze grid
                 my_maze = invert_maze_to_grid(
                     coords_scaled,
-                    maze_width_unscaled,
-                    maze_height_unscaled,
+                    cfg.MAZE_WIDTH,
+                    cfg.MAZE_HEIGHT,
                     0,
                     0,
                     0,
-                    block_width_unscaled,
+                    cfg.BLOCK_WIDTH,
                 )
                 # Determine how many full squares reside in maze
-                num_maze_squares = grid_space(my_maze) / (block_width_unscaled**2)
+                num_maze_squares = grid_space(my_maze) / (cfg.BLOCK_WIDTH**2)
+
                 # Create warning message if path space deemed too sparse
                 if num_maze_squares < 8:
-                    messagebox.showinfo(
-                        "Warning",
-                        "Maze has insufficient space for assets.\n\n"
-                        "Path area must equal at least 8 full squares.\n\n"
-                        "Click OK then click back onto Level Builder window.",
-                    )
+                    messagebox.showinfo("Warning", cfg.MSG_STRING["asset_space"])
                 else:
+                    # Export screenshot without assets
+                    screenshot_rect = pygame.Rect(
+                        cfg.DRAW_IMAGE_X,
+                        cfg.DRAW_IMAGE_Y,
+                        maze_width + 2 * image_boundary,
+                        maze_height + 2 * image_boundary,
+                    )
+                    sub_surface = screen.subsurface(screenshot_rect)
+                    pygame.image.save(sub_surface, cfg.FILES["screenshot_no_assets"])
+                    print(f"Screenshot saved as {cfg.FILES["screenshot_no_assets"]}")
+
                     # Flag for discontinuing maze drawing
                     maze_draw = False
+
                     # Overwrite old text
-                    right_rect = pygame.Rect(1140, 50, width - 1140, height - 50)
-                    screen.fill(white, right_rect)
+                    right_rect = pygame.Rect(cfg.WHITE_RECTS["assets"])
+                    screen.fill(cfg.COLORS["white"], right_rect)
+
                     # Display instruction text
-                    text_strings = [
-                        "Key (see list below) to place",
-                        "asset at cursor location",
-                        "Right click to undo",
-                        "P to save screenshot",
-                        "C to export maze to files",
-                    ]
-                    for row, text_line in enumerate(text_strings):
-                        text_surface = font.render(text_line, True, black)
+                    for row, text_line in enumerate(cfg.ASSET_STRINGS):
+                        text_surface = font.render(text_line, True, cfg.COLORS["black"])
                         if row == 1:
-                            screen.blit(text_surface, (1140, 100 + row * 40))
+                            loc = cfg.TEXT_LOC["place_assets_row_1"]
                         else:
-                            screen.blit(text_surface, (1140, 100 + row * 50))
+                            loc = cfg.TEXT_LOC["place_assets"]
+                        screen.blit(text_surface, (loc[0], loc[1] + row * loc[2]))
+
                     # List of asset choices
                     black_rect = pygame.Rect(1130, 390, 330, 260)
-                    screen.fill(black, black_rect)
-                    asset_defs = [
-                        {
-                            "letter": "S",
-                            "description": "Player start location",
-                            "color": green,
-                            "location": (),
-                        },
-                        {
-                            "letter": "R",
-                            "description": "Player respawn location",
-                            "color": dkgreen,
-                            "location": (),
-                        },
-                        {
-                            "letter": "E",
-                            "description": "Enemy start location",
-                            "color": red,
-                            "location": (),
-                        },
-                        {
-                            "letter": "1",
-                            "description": "Item 1 location",
-                            "color": blue,
-                            "location": (),
-                        },
-                        {
-                            "letter": "2",
-                            "description": "Item 2 location",
-                            "color": magenta,
-                            "location": (),
-                        },
-                        {
-                            "letter": "3",
-                            "description": "Item 3 location",
-                            "color": orange,
-                            "location": (),
-                        },
-                        {
-                            "letter": "4",
-                            "description": "Item 4 location",
-                            "color": yellow,
-                            "location": (),
-                        },
-                        {
-                            "letter": "H",
-                            "description": "Exit location",
-                            "color": white,
-                            "location": (),
-                        },
-                    ]
+                    screen.fill(cfg.COLORS["black"], black_rect)
+                    asset_defs = cfg.ASSET_DEFS
                     asset_letters = [asset["letter"].lower() for asset in asset_defs]
+                    loc = cfg.TEXT_LOC["assets"]
                     for index, asset in enumerate(asset_defs):
                         screen.blit(
                             font_small.render(
@@ -492,7 +436,7 @@ while running:
                                 True,
                                 asset["color"],
                             ),
-                            (1140, 400 + index * 30),
+                            (loc[0], loc[1] + index * loc[2]),
                         )
                     pygame.display.update()
             # If asset key is pressed once this mode chosen, draw asset
@@ -502,6 +446,7 @@ while running:
                     for asset in asset_defs
                     if asset.get("letter").lower() == event.unicode.lower()
                 ]
+
                 # If no location already assigned
                 if not matching_asset[0].get("location"):
                     asset_coord_result = draw_asset(
@@ -509,16 +454,17 @@ while running:
                         chosen_coords,
                         dirty_rects,
                         screen,
-                        draw_image_x,
-                        draw_image_y,
+                        cfg.DRAW_IMAGE_X,
+                        cfg.DRAW_IMAGE_Y,
                         image_boundary,
                         min_block_spacing,
                         block_width,
                         matching_asset[0].get("letter"),
                         matching_asset[0].get("color"),
-                        black,
+                        cfg.COLORS["black"],
                         font_small,
                     )
+
                     # Assign coordinates to asset in dictionary
                     if asset_coord_result:
                         for asset in asset_defs:
@@ -537,8 +483,8 @@ while running:
             if not chosen_coords:
                 # If no previous points chosen with mouse, start at upper left corner
                 current_selected_pos = (
-                    draw_image_x + image_boundary + int(block_width / 2),
-                    draw_image_y + image_boundary + int(block_width / 2),
+                    cfg.DRAW_IMAGE_X + image_boundary + int(block_width / 2),
+                    cfg.DRAW_IMAGE_Y + image_boundary + int(block_width / 2),
                 )
             else:
                 try:
@@ -570,7 +516,11 @@ while running:
 
         my_rect = define_rect(current_selected_pos, block_width)
         my_rect = shift_rect_to_divisible_pos(
-            my_rect, draw_image_x, draw_image_y, min_block_spacing, image_boundary
+            my_rect,
+            cfg.DRAW_IMAGE_X,
+            cfg.DRAW_IMAGE_Y,
+            min_block_spacing,
+            image_boundary,
         )
 
         # If chosen coordinate from arrow keys is already in chosen coordinates,
@@ -580,9 +530,9 @@ while running:
         if arrow_pressed and my_rect.center in chosen_coords:
             arrow_index = chosen_coords.index(my_rect.center)
             for i in range(3):
-                draw_square(my_rect, screen, white, dirty_rects)
+                draw_square(my_rect, screen, cfg.COLORS["white"], dirty_rects)
                 time.sleep(1 / 30)
-                draw_square(my_rect, screen, black, dirty_rects)
+                draw_square(my_rect, screen, cfg.COLORS["black"], dirty_rects)
                 time.sleep(1 / 30)
         else:
             arrow_index = -1
@@ -595,15 +545,27 @@ while running:
         for coord in chosen_coords:
             coords_scaled.append(
                 (
-                    int((coord[0] - draw_image_x - image_boundary) / scale_factor),
-                    int((coord[1] - draw_image_y - image_boundary) / scale_factor),
+                    int(
+                        (coord[0] - cfg.DRAW_IMAGE_X - image_boundary)
+                        / cfg.SCALE_FACTOR
+                    ),
+                    int(
+                        (coord[1] - cfg.DRAW_IMAGE_Y - image_boundary)
+                        / cfg.SCALE_FACTOR
+                    ),
                 )
             )
         new_center = (
-            int((my_rect.center[0] - draw_image_x - image_boundary) / scale_factor),
-            int((my_rect.center[1] - draw_image_y - image_boundary) / scale_factor),
+            int(
+                (my_rect.center[0] - cfg.DRAW_IMAGE_X - image_boundary)
+                / cfg.SCALE_FACTOR
+            ),
+            int(
+                (my_rect.center[1] - cfg.DRAW_IMAGE_Y - image_boundary)
+                / cfg.SCALE_FACTOR
+            ),
         )
-        my_rect_scaled = define_rect(new_center, block_width_unscaled)
+        my_rect_scaled = define_rect(new_center, cfg.BLOCK_WIDTH)
 
         # Check to make sure the current shifted position is not the same as
         # the last, and that it's not in chosen coords. If all criteria met,
@@ -615,31 +577,33 @@ while running:
 
             if rect_within_boundary(
                 my_rect,
-                draw_image_x,
-                draw_image_y,
+                cfg.DRAW_IMAGE_X,
+                cfg.DRAW_IMAGE_Y,
                 image_boundary,
                 maze_width,
                 maze_height,
             ) and rect_gives_uniform_path(
                 coords_scaled,
                 my_rect_scaled,
-                maze_width_unscaled,
-                maze_height_unscaled,
+                cfg.MAZE_WIDTH,
+                cfg.MAZE_HEIGHT,
                 0,
                 0,
                 0,
-                block_width_unscaled,
+                cfg.BLOCK_WIDTH,
             ):
                 # Add updated mouse position to list of previous points
                 chosen_coords.append((my_rect.center))
-                draw_square(my_rect, screen, black, dirty_rects)
+                draw_square(my_rect, screen, cfg.COLORS["black"], dirty_rects)
 
     # Perform undo operation, which requires re-drawing overlapping squares
     elif mouse_right_click and len(chosen_coords) > 0 and maze_draw:
         # Remove last coordinate (undo)
         last_coord = chosen_coords.pop()
+
         # Remove last shifted coordinate from history
         shifted_coords_history.pop()
+
         # Draw a block overtop the old coordinate
         my_rect = define_rect(last_coord, block_width)
         selected_color = maze_colors[maze_color_index]
@@ -649,7 +613,8 @@ while running:
         for coord in chosen_coords:
             temp_rect = define_rect(coord, block_width)
             if temp_rect.colliderect(my_rect):
-                draw_square(temp_rect, screen, black, dirty_rects)
+                draw_square(temp_rect, screen, cfg.COLORS["black"], dirty_rects)
+
         # Reset flag for right click
         mouse_right_click = False
 
@@ -657,14 +622,17 @@ while running:
     elif mouse_right_click and len(asset_coords) > 0 and not maze_draw:
         # Get last coordinate
         remove_asset_coord = asset_coords.pop()
+
         # Set asset coordinate in dictionary to ()
         for asset in asset_defs:
             if asset.get("location") == remove_asset_coord:
                 asset["location"] = ()
                 break
+
         # Erase asset on maze by drawing black square
         temp_rect = define_rect(remove_asset_coord, block_width)
-        draw_square(temp_rect, screen, black, dirty_rects)
+        draw_square(temp_rect, screen, cfg.COLORS["black"], dirty_rects)
+
         # Reset flag for right click
         mouse_right_click = False
 
