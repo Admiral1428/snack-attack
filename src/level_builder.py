@@ -610,8 +610,7 @@ while running:
             not shifted_coords_history or my_rect.center != shifted_coords_history[-1]
         ) and my_rect.center not in chosen_coords:
             shifted_coords_history.append(my_rect.center)
-            
-            
+
             if rect_within_boundary(
                 my_rect,
                 draw_image_x,

@@ -18,6 +18,21 @@ def import_image_dir(directory_path):
     return loaded_images
 
 
+# Loads all wav sound files from a directory and stores in a list
+def import_sound_dir(directory_path):
+    loaded_sounds = {}
+    for filename in os.listdir(directory_path):
+        if filename.lower().endswith(".wav"):
+            sound_path = os.path.join(directory_path, filename)
+            try:
+                sound_effect = pygame.mixer.Sound(sound_path)
+                sound_name = os.path.splitext(filename)[0]
+                loaded_sounds[sound_name] = sound_effect
+            except pygame.error as e:
+                print(f"Error loading sound: {filename}: {e}")
+    return loaded_sounds
+
+
 # Saves paths associated with levels at a given directory if appropriate
 # supporting files are found
 def get_levels(directory_path):
