@@ -5,6 +5,7 @@ import pygame
 from rect.draw import draw_maze
 from asset.sprite import Sprite
 from grid.utils import invert_maze_to_grid
+from utils.exceptions import CustomError
 from fileio.export import export_settings, move_one_file
 from fileio.load import (
     get_levels,
@@ -53,7 +54,7 @@ def perform_factoring(maze_width, maze_height, block_width, maze_path, maze_fact
     return level_speeds, game_tick, maze_grid
 
 
-def run_title_screen(screen, images, item_image_defs, spawn_speeds):
+def run_title_screen(screen, images, item_image_defs, spawn_speeds, maze_fidelity):
 
     # Use lucidaconsole text for retro look
     font_large = pygame.font.SysFont("lucidaconsole", 80)
@@ -62,22 +63,16 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds):
 
     # Define maze fidelity options
     maze_fidelity_opts = ["coarse", "normal", "fine"]
+    maze_fidelity_factors = [4, 2, 1]
 
-    # Load game settings
-    settings = read_csv_dict("../assets/settings/config.csv")
-    for dict in settings:
-        for key, value in dict.items():
-            if key == "maze_fidelity":
-                maze_fidelity = value
-    if maze_fidelity == "fine":
-        maze_fidelity_index = 2
-        maze_factor = 1
-    elif maze_fidelity == "normal":
-        maze_fidelity_index = 1
-        maze_factor = 2
-    else:
-        maze_fidelity_index = 0
-        maze_factor = 4
+    maze_fidelity_index = None
+    maze_factor = None
+    for index, opt in enumerate(maze_fidelity_opts):
+        if maze_fidelity == opt:
+            maze_fidelity_index = index
+            maze_factor = maze_fidelity_factors[index]
+    if maze_fidelity_index == None or maze_factor == None:
+        raise CustomError("Maze fidelity not a valid option.")
 
     # Window dimensions
     width, height = (1600, 900)
@@ -184,20 +179,17 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds):
                         maze_fidelity_index = 0
                     else:
                         maze_fidelity_index += 1
-                    settings = {
-                        "maze_fidelity": maze_fidelity_opts[maze_fidelity_index]
-                    }
-                    export_settings(settings)
+                    maze_factor = maze_fidelity_factors[maze_fidelity_index]
+                    maze_fidelity = maze_fidelity_opts[maze_fidelity_index]
+
+                    # Load then re-export settings file
+                    settings = read_csv_dict("../assets/settings/config.csv")
+                    for key, value in settings[0].items():
+                        if key == "maze_fidelity":
+                            settings[0][key] = maze_fidelity
+                    export_settings(settings[0])
                     move_one_file("config.csv", ".", "../assets/settings/")
-                    if maze_fidelity_index == 2:
-                        maze_factor = 1
-                        maze_fidelity = "fine"
-                    elif maze_fidelity_index == 1:
-                        maze_factor = 2
-                        maze_fidelity = "normal"
-                    else:
-                        maze_factor = 4
-                        maze_fidelity = "coarse"
+
                     # Get variables which are affected by maze fidelity
                     level_speeds, game_tick, maze_grid = perform_factoring(
                         maze_width, maze_height, block_width, maze_path, maze_factor
@@ -236,6 +228,7 @@ def run_title_screen(screen, images, item_image_defs, spawn_speeds):
                 maze_path,
                 screen,
                 0,
+                None,
             )
 
             # Get variables which are affected by maze fidelity
