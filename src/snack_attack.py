@@ -221,20 +221,6 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.VIDEORESIZE:
-            # Calculate new dimensions while maintaining aspect ratio
-            new_width, new_height = event.size
-
-            if new_width / aspect_ratio > new_height:
-                new_width = int(new_height * aspect_ratio)
-            else:
-                new_height = int(new_width / aspect_ratio)
-
-            # Set the new display mode
-            screen = pygame.display.set_mode((new_width, new_height), pygame.RESIZABLE)
-
-            # Update game surface
-            game_surface = pygame.transform.scale(game_surface, screen.get_size())
         elif event.type == pygame.KEYDOWN and not game_intro:
             if event.key == pygame.K_F10:
                 f10_pressed = True
