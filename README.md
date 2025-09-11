@@ -5,6 +5,8 @@ The game is inspired by *Mine Shaft*, released on the IBM PCjr in 1984.
 
 <br>
 <img width="1602" height="932" alt="screenshot_03" src="https://github.com/user-attachments/assets/e8e10276-6bfb-49a6-b99d-dfd5298f360e" />
+<br>
+<img width="1602" height="932" alt="screenshot_06" src="https://github.com/user-attachments/assets/3f1587e8-bf5f-49ed-bda0-11841c16476d" />
 
 ## Installation
 
@@ -37,7 +39,7 @@ These compliance checks are enforced each time the user attempts to draw a new b
 <img width="1602" height="932" alt="screenshot_01" src="https://github.com/user-attachments/assets/a5d60fd9-e96a-4ddf-92be-94fd67e34dd4" />
 <br><br>
 
-Once the user hits the "A" key to finalize the level, the second mode is activated which allows for the selection of locations for each of the relevant assets. This includes the player starting location, the player's respawn location if destroyed, enemy starting locations, four item locations, and the exit location, which will appear once all enemies are destroyed or all items are collected. By hovering the mouse over a desired location in the maze and pressing the appropriate key, the asset is placed visually, and its coordinates are later exported to a file. Right-clicking is used to undo the last action.
+Once the user hits the "A" key to finalize the level, the second mode is activated which allows for the selection of locations for each of the relevant assets. This includes the player starting location, the player's respawn location if destroyed, the starting location for all enemy types, four item locations, and the exit location, which will appear once all enemies are destroyed or all items are collected. By hovering the mouse over a desired location in the maze and pressing the appropriate key, the asset is placed visually, and its coordinates are later exported to a file. Right-clicking is used to undo the last action.
 
 <br>
 <img width="1602" height="932" alt="screenshot_02" src="https://github.com/user-attachments/assets/b8be3638-b1b4-44b3-b0b1-be110928f0a7" />
@@ -50,7 +52,6 @@ Upon pressing "C" to export the level, the user is prompted to create a folder w
 
 ## Gameplay
 Upon completing the final level in the ``levels`` folder, these levels are repeated using the frantic game speed, with a pre-defined number of enemies. This behavior is similar to that in the *Mine Shaft* game. It is possible, however, to add countless levels to this folder to delay when this behavior is encountered. The game includes 10 levels, with a screenshot of the third level shown as follows:
-
 
 <br>
 <img width="1602" height="932" alt="screenshot_05" src="https://github.com/user-attachments/assets/26ecb89e-3d12-4dae-b271-c22feb18c259" />
@@ -75,4 +76,4 @@ Great joy was found in this project, and work on adding new features would conti
 2. Ability to import and edit previous levels, erasing coordinates already drawn.
 3. Procedural level generation with a custom algorithm or AI model.
 4. Improved enemy pathfinding, potentially using A*, BFS, or DFS algorithms.
-5. Further performance optimizations.
+5. Further code organization and performance optimizations.
