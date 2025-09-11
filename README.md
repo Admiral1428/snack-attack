@@ -1,5 +1,5 @@
 # snack-attack
-*Snack Attack* is a 2D labyrinth game designed in Python. The player controls a combine vehicle to collect fruit items and fight vegetable enemies before proceeding to the next level.
+*Snack Attack* is a 2D labyrinth game designed using Python. The player controls a combine vehicle to collect fruit items and fight vegetable enemies before proceeding to the next level.
 
 The game is inspired by *Mine Shaft*, released on the IBM PCjr in 1983.
 
@@ -17,7 +17,10 @@ You can install and run the project in two ways:
   * Note that Windows scaling may need to be disabled on certain displays.
   
 * Method 2: From source code
-  * First, install the project's dependencies from the root directory by running the following command: ``pip install -r requirements.txt``
+  * Download and install Python 3.13.5 or newer.
+  * Add your Python installation folder and the associated ``Scripts`` folder to your system environment variables "Path" variable.
+  * Download the project source code and unzip, or clone the repository using Git.
+  * Install the project's dependencies from the root directory by running the following command: ``pip install -r requirements.txt``
   * You can then run the game directly from the source code. 
 
 ## Overview
@@ -59,7 +62,7 @@ These three options were included because it was found that older PCs can strugg
 
 The "F1" key toggles between the four control schemes available to the player. These consist of either "W", "A", "S", "D" for up, left, down, right and "Enter" for firing the weapon, or "I", "J", "K", "L" and "F". The first scheme for these layouts features "hold-to-move" logic, where the player character will only traverse in a given direction if the user is holding down the corresponding key. The second scheme features "press-to-move" logic, where pressing a given direction key will initiate movement in that direction until the Spacebar is pressed to stop movement. If the player cannot move in the requested direction, the previously selected direction is attempted, as this simplifies navigation in complex mazes (rather than requiring a pixel-perfect location before user input results in meaningful action).
 
-Player lives are decremented upon contact with an enemy and increase by one if all items are collected. Score is increased by destroying enemies and by collecting items. The "Escape" key ends the game and returns to the title screen, which also occurs if the player expends all remaining lives. The "Pause" key pauses the game, and "F10" skips to the next level. This "F10" key can be pressed repeatedly to skip multiple levels, so the user does not have to wait for the maze to be drawn. The block-by-block maze-drawing aesthetic is not required on modern PCs, but it was implemented to give the user a momentary break from the previous level, to illustrate how the level was created in the editor, and as a nod to the *Mine Shaft* game.
+Player lives are decremented upon contact with an enemy and increase by one if all items are collected. Score is increased by destroying enemies and by collecting items. The "Escape" key ends the game and returns to the title screen, which also occurs if the player expends all remaining lives. The "Pause" key pauses the game, and "F10" skips to the next level. This "F10" key can be pressed repeatedly to skip multiple levels, so the user does not have to wait for the maze to be drawn. The mazes are drawn block-by-block over the course of several seconds, which is not necessary on modern PCs. However, this "retro" aesthetic was implemented to give the user a momentary break from the previous level, to illustrate how the level was created in the editor, and as a nod to the *Mine Shaft* game.
 
 ## Video Demo
 The following video demonstrates the complete use of the level editor and game executable: 
