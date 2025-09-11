@@ -1,7 +1,7 @@
 # snack-attack
 *Snack Attack* is a 2D labyrinth game designed using Python. The player controls a combine vehicle to collect fruit items and fight vegetable enemies before proceeding to the next level.
 
-The game is inspired by *Mine Shaft*, released on the IBM PCjr in 1983.
+The game is inspired by *Mine Shaft*, released on the IBM PCjr in 1984.
 
 <br>
 <img width="1602" height="932" alt="screenshot_03" src="https://github.com/user-attachments/assets/e8e10276-6bfb-49a6-b99d-dfd5298f360e" />
