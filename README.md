@@ -5,8 +5,10 @@ The game is inspired by *Mine Shaft*, released on the IBM PCjr in 1984.
 
 <br>
 <img width="1602" height="932" alt="screenshot_03" src="https://github.com/user-attachments/assets/e8e10276-6bfb-49a6-b99d-dfd5298f360e" />
-<br>
-<img width="1602" height="932" alt="screenshot_06" src="https://github.com/user-attachments/assets/3f1587e8-bf5f-49ed-bda0-11841c16476d" />
+
+## Video Demo
+
+<video src="https://github.com/user-attachments/assets/e3de73c9-39b0-4a71-9bcf-fb77037038db" width="1600" height="900" controls></video>
 
 ## Installation
 
@@ -65,10 +67,10 @@ The "F1" key toggles between the four control schemes available to the player. T
 
 Player lives are decremented upon contact with an enemy and increase by one if all items are collected. Score is increased by destroying enemies and by collecting items. The "Escape" key ends the game and returns to the title screen, which also occurs if the player expends all remaining lives. The "Pause" key pauses the game, and "F10" skips to the next level. This "F10" key can be pressed repeatedly to skip multiple levels, so the user does not have to wait for the maze to be drawn. The mazes are drawn block-by-block over the course of several seconds, which is not necessary on modern PCs. However, this "retro" aesthetic was implemented to give the user a momentary break from the previous level, to illustrate how the level was created in the editor, and as a nod to the *Mine Shaft* game.
 
-## Video Demo
-The following video demonstrates the complete use of the level editor and game executable: 
+## Level Builder Demo
+The following video demonstrates the complete use of the level editor and game executables: 
 
-[![Snack_Attack on YouTube](https://img.youtube.com/vi/W1gzTG4OCZY/0.jpg)](https://www.youtube.com/watch?v=W1gzTG4OCZY)
+<video src="https://github.com/user-attachments/assets/a3260e43-b35d-4a6f-a8db-b5ff5325fa2b" width="1600" height="900" controls></video>
 
 ## Features Wishlist
 Great joy was found in this project, and work on adding new features would continue if time permitted. Potential features include:
