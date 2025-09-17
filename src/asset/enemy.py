@@ -6,11 +6,20 @@ from asset.sprite import Sprite
 # Class to define a sprite and its methods
 class Enemy(Sprite):
     def __init__(
-        self, name, image, center_position, speed, can_rotate, hitbox_width, path_width
+        self,
+        name,
+        image,
+        center_position,
+        speed,
+        can_rotate,
+        hitbox_width,
+        path_width,
+        is_invincible,
     ):
         super().__init__(
             name, image, center_position, speed, can_rotate, hitbox_width, path_width
         )
+        self.is_invincible = is_invincible
 
     # Method to check if the enemy can move within maze
     # in the direction of a second sprite, and that a clear

@@ -332,3 +332,7 @@ class Sprite:
     # amount as calculated with the game tick
     def is_stopped(self):
         return self.got_stopped
+
+    # Increment animation start time
+    def increment_animation_start_time(self, increment):
+        self.animation_start_time += increment
