@@ -1,19 +1,8 @@
-import os
 import pygame
 import time
-import tkinter as tk
-from tkinter import messagebox, filedialog
 from settings import config as cfg
 from rect.utils import define_rect, shift_rect_to_divisible_pos
-from rect.draw import draw_square, draw_asset, draw_maze
-from grid.utils import invert_maze_to_grid, grid_space
-from fileio.load import import_image_dir
-from fileio.export import (
-    export_path_coords_to_csv,
-    export_asset_coords_to_csv,
-    export_metadata,
-    move_files,
-)
+from rect.draw import draw_square
 from path.utils import (
     rect_within_boundary,
     rect_gives_uniform_path,
@@ -190,6 +179,73 @@ def erase_and_redraw(
             draw_square(temp_rect, screen, cfg.COLORS["black"], dirty_rects)
 
 
+# Function to erase path at current mouse location
+def erase_path(
+    block_width,
+    min_block_spacing,
+    image_boundary,
+    shifted_coords_history,
+    chosen_coords,
+    maze_colors,
+    maze_color_index,
+    screen,
+    dirty_rects,
+):
+    current_selected_pos = pygame.mouse.get_pos()
+
+    my_rect = define_rect(current_selected_pos, block_width)
+    my_rect = shift_rect_to_divisible_pos(
+        my_rect,
+        cfg.DRAW_IMAGE_X,
+        cfg.DRAW_IMAGE_Y,
+        min_block_spacing,
+        image_boundary,
+    )
+
+    if my_rect.center in chosen_coords:
+        # Determine if removing this coordinate produces legal maze
+        temp_coords = chosen_coords.copy()
+        temp_coords.remove(my_rect.center)
+        # Coarsen inputs prior to checking maze grid to optimize runtime
+        coords_scaled = []
+        for coord in temp_coords:
+            coords_scaled.append(
+                (
+                    int(
+                        (coord[0] - cfg.DRAW_IMAGE_X - image_boundary)
+                        / cfg.SCALE_FACTOR
+                    ),
+                    int(
+                        (coord[1] - cfg.DRAW_IMAGE_Y - image_boundary)
+                        / cfg.SCALE_FACTOR
+                    ),
+                )
+            )
+        if rect_gives_uniform_path(
+            coords_scaled,
+            None,
+            cfg.MAZE_WIDTH,
+            cfg.MAZE_HEIGHT,
+            0,
+            0,
+            0,
+            cfg.BLOCK_WIDTH,
+        ):
+            # Remove chosen position and redraw around it
+            chosen_coords.remove(my_rect.center)
+            shifted_coords_history.remove(my_rect.center)
+
+            erase_and_redraw(
+                my_rect.center,
+                block_width,
+                maze_colors,
+                maze_color_index,
+                screen,
+                dirty_rects,
+                chosen_coords,
+            )
+
+
 # Function to undo drawing of path rect
 def undo_path_rect(
     chosen_coords,
@@ -218,7 +274,7 @@ def undo_path_rect(
     )
 
     # Reset flag for right click
-    flags.mouse_right_click = False
+    flags.x_pressed = False
 
     return flags
 

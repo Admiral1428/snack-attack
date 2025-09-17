@@ -40,9 +40,12 @@ def process_input(
             flags.mouse_left_held = True
         elif event.button == 3:  # Right mouse button
             flags.mouse_right_click = True
+            flags.mouse_right_held = True
     elif event.type == pygame.MOUSEBUTTONUP:
         if event.button == 1:  # Left mouse button
             flags.mouse_left_held = False
+        elif event.button == 3:  # Right mouse button
+            flags.mouse_right_held = False
     elif event.type == pygame.KEYDOWN:
         if flags.maze_draw and event.key in [
             pygame.K_UP,
@@ -75,6 +78,8 @@ def process_input(
                 enemy_index,
                 asset_defs,
             )
+        elif event.key == pygame.K_x and flags.maze_draw:
+            flags.x_pressed = True
         elif event.key == pygame.K_w and flags.maze_draw:
             maze_color_index = change_maze_color(
                 screen,

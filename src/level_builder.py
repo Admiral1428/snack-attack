@@ -1,23 +1,6 @@
-import os
 import pygame
-import time
-import tkinter as tk
-from tkinter import messagebox, filedialog
 from settings import config as cfg
-from rect.utils import define_rect, shift_rect_to_divisible_pos
-from rect.draw import draw_square, draw_asset, draw_maze
-from grid.utils import invert_maze_to_grid, grid_space
-from fileio.load import import_image_dir
-from fileio.export import (
-    export_path_coords_to_csv,
-    export_asset_coords_to_csv,
-    export_metadata,
-    move_files,
-)
-from path.utils import (
-    rect_within_boundary,
-    rect_gives_uniform_path,
-)
+from rect.draw import draw_maze
 from builder.start import (
     builder_init,
     Flags,
@@ -27,7 +10,7 @@ from builder.start import (
     draw_speed_enemy_text,
 )
 from builder.input import process_input
-from builder.draw import draw_path, undo_path_rect, undo_asset_placement
+from builder.draw import draw_path, undo_path_rect, erase_path, undo_asset_placement
 
 # Initialize level builder
 (
@@ -165,7 +148,7 @@ while flags.running:
             arrow_index,
         )
     # Undo last path draw
-    elif flags.mouse_right_click and len(chosen_coords) > 0 and flags.maze_draw:
+    elif flags.x_pressed and len(chosen_coords) > 0 and flags.maze_draw:
         flags = undo_path_rect(
             chosen_coords,
             shifted_coords_history,
@@ -175,6 +158,19 @@ while flags.running:
             screen,
             dirty_rects,
             flags,
+        )
+    # Erase path at mouse location
+    elif flags.mouse_right_held and len(chosen_coords) > 0 and flags.maze_draw:
+        erase_path(
+            block_width,
+            min_block_spacing,
+            image_boundary,
+            shifted_coords_history,
+            chosen_coords,
+            maze_colors,
+            maze_color_index,
+            screen,
+            dirty_rects,
         )
     # Undo last asset drawing
     elif flags.mouse_right_click and len(asset_coords) > 0 and not flags.maze_draw:
