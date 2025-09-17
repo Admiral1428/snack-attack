@@ -190,6 +190,8 @@ class Flags:
     def __init__(self):
         self.running = True
         self.mouse_left_held = False
+        self.mouse_right_held = False
         self.mouse_right_click = False
         self.arrow_pressed = False
         self.maze_draw = True
+        self.x_pressed = True
