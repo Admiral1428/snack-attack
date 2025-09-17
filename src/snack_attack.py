@@ -335,6 +335,8 @@ while flags.running:
             # Proceed to next level if collision with exit
             if player.collide_check(exit):
                 flags = animate_exit(flags, exit, images)
+        else:
+            exit = None
 
         # Draw item, projectile, blast, player, enemy, and exit sprites
         sprite_image_data, pause_delta = draw_sprites(
