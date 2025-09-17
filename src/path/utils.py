@@ -46,166 +46,75 @@ def edge_diagonals_legal(subset_grid, maze_height, maze_width, block_width):
             #    /
             # 0,0
             # 1,0
-            if (
-                subset_grid[row][col] == 0
-                and row < maze_height - 1
-                and col > 0
-                and subset_grid[row][col - 1] == 0
-                and subset_grid[row + 1][col] == 0
-                and subset_grid[row + 1][col - 1] == 1
-            ):
-                diag_width = 1
-                found_boundary = False
-                found_wall = False
-                while not found_wall and not found_boundary:
-                    if row - diag_width < 0 or col + diag_width == maze_width:
-                        found_boundary = True
-                    elif subset_grid[row - diag_width][col + diag_width] == 0:
-                        diag_width += 1
-                    else:
-                        found_wall = True
-                if diag_width < block_width:
-                    # Found instance of non-compliant diagonal
+            if is_edge(subset_grid, row, col, maze_height, maze_width, (-1, 1)):
+                if not diag_direction_legal(subset_grid, row, col, maze_width, maze_height, block_width, (1, -1)):
                     return False
-                elif diag_width > block_width and not found_boundary:
-                    # Determine if opposing edge
-                    #  0,1
-                    #  0,0
-                    # /
-                    if (
-                        subset_grid[row - diag_width][col + diag_width] == 0
-                        and row - diag_width > 0
-                        and col + diag_width < maze_width - 1
-                        and subset_grid[row - diag_width][col + diag_width + 1] == 0
-                        and subset_grid[row - diag_width - 1][col + diag_width] == 0
-                        and subset_grid[row - diag_width - 1][col + diag_width + 1] == 1
-                    ):
-                        # Found instance of non-compliant diagonal
-                        return False
+
             # Upper left edge
             # 1,0
             # 0,0
             #    \
-            if (
-                subset_grid[row][col] == 0
-                and row > 0
-                and col > 0
-                and subset_grid[row][col - 1] == 0
-                and subset_grid[row - 1][col] == 0
-                and subset_grid[row - 1][col - 1] == 1
-            ):
-                diag_width = 1
-                found_boundary = False
-                found_wall = False
-                while not found_wall and not found_boundary:
-                    if (
-                        row + diag_width == maze_height
-                        or col + diag_width == maze_width
-                    ):
-                        found_boundary = True
-                    elif subset_grid[row + diag_width][col + diag_width] == 0:
-                        diag_width += 1
-                    else:
-                        found_wall = True
-                if diag_width < block_width:
-                    # Found instance of non-compliant diagonal
+            elif is_edge(subset_grid, row, col, maze_height, maze_width, (-1, -1)):
+                if not diag_direction_legal(subset_grid, row, col, maze_width, maze_height, block_width, (1, 1)):
                     return False
-                elif diag_width > block_width and not found_boundary:
-                    # Determine if opposing edge
-                    # \
-                    #  0,0
-                    #  0,1
-                    if (
-                        subset_grid[row + diag_width][col + diag_width] == 0
-                        and row + diag_width < maze_height - 1
-                        and col + diag_width < maze_width - 1
-                        and subset_grid[row + diag_width][col + diag_width + 1] == 0
-                        and subset_grid[row + diag_width + 1][col + diag_width] == 0
-                        and subset_grid[row + diag_width + 1][col + diag_width + 1] == 1
-                    ):
-                        # Found instance of non-compliant diagonal
-                        return False
+            
             # Lower right edge
             # \
             #  0,0
             #  0,1
-            if (
-                subset_grid[row][col] == 0
-                and row < maze_height - 1
-                and col < maze_width - 1
-                and subset_grid[row][col + 1] == 0
-                and subset_grid[row + 1][col] == 0
-                and subset_grid[row + 1][col + 1] == 1
-            ):
-                diag_width = 1
-                found_boundary = False
-                found_wall = False
-                while not found_wall and not found_boundary:
-                    if row - diag_width < 0 or col - diag_width < 0:
-                        found_boundary = True
-                    elif subset_grid[row - diag_width][col - diag_width] == 0:
-                        diag_width += 1
-                    else:
-                        found_wall = True
-                if diag_width < block_width:
-                    # Found instance of non-compliant diagonal
+            elif is_edge(subset_grid, row, col, maze_height, maze_width, (1, 1)):
+                if not diag_direction_legal(subset_grid, row, col, maze_width, maze_height, block_width, (-1, -1)):
                     return False
-                elif diag_width > block_width and not found_boundary:
-                    # Determine if opposing edge
-                    # 1,0
-                    # 0,0
-                    #    \
-                    if (
-                        subset_grid[row - diag_width][col - diag_width] == 0
-                        and row - diag_width > 0
-                        and col - diag_width > 0
-                        and subset_grid[row - diag_width][col - diag_width - 1] == 0
-                        and subset_grid[row - diag_width - 1][col - diag_width] == 0
-                        and subset_grid[row - diag_width - 1][col - diag_width - 1] == 1
-                    ):
-                        # Found instance of non-compliant diagonal
-                        return False
+                
             # Upper right edge
             #  0,1
             #  0,0
             # /
-            if (
-                subset_grid[row][col] == 0
-                and row > 0
-                and col < maze_width - 1
-                and subset_grid[row][col + 1] == 0
-                and subset_grid[row - 1][col] == 0
-                and subset_grid[row - 1][col + 1] == 1
-            ):
-                diag_width = 1
-                found_boundary = False
-                found_wall = False
-                while not found_wall and not found_boundary:
-                    if row + diag_width == maze_height or col - diag_width < 0:
-                        found_boundary = True
-                    elif subset_grid[row + diag_width][col - diag_width] == 0:
-                        diag_width += 1
-                    else:
-                        found_wall = True
-                if diag_width < block_width:
-                    # Found instance of non-compliant diagonal
+            elif is_edge(subset_grid, row, col, maze_height, maze_width, (1, -1)):
+                if not diag_direction_legal(subset_grid, row, col, maze_width, maze_height, block_width, (-1, 1)):
                     return False
-                elif diag_width > block_width and not found_boundary:
-                    # Determine if opposing edge
-                    #    /
-                    # 0,0
-                    # 1,0
-                    if (
-                        subset_grid[row + diag_width][col - diag_width] == 0
-                        and row + diag_width < maze_height - 1
-                        and col - diag_width > 0
-                        and subset_grid[row + diag_width][col - diag_width - 1] == 0
-                        and subset_grid[row + diag_width + 1][col - diag_width] == 0
-                        and subset_grid[row + diag_width + 1][col - diag_width - 1] == 1
-                    ):
-                        # Found instance of non-compliant diagonal
-                        return False
     return True
+
+# Helper function for edge_diagonals_legal to check if diagonal path starting from an edge is legal
+# diag_direction is (x, y) where +x is right and +y is down
+def diag_direction_legal(subset_grid, row, col, maze_width, maze_height, block_width, diag_direction):
+    diag_width = 1
+    found_boundary = False
+    found_wall = False
+    while not found_wall and not found_boundary:
+        if row - diag_width < 0 or col - diag_width < 0 or row + diag_width == maze_height or col + diag_width == maze_width:
+            found_boundary = True
+        elif subset_grid[row + diag_width*diag_direction[1]][col + diag_width*diag_direction[0]] == 0:
+            diag_width += 1
+        else:
+            found_wall = True
+    if diag_width < block_width:
+        # Found instance of non-compliant diagonal
+        return False
+    elif diag_width > block_width and not found_boundary:
+        # If opposing edge
+        if is_edge(subset_grid, row + diag_width*diag_direction[1], col + diag_width*diag_direction[0], maze_height, maze_width, diag_direction):
+            # Found instance of non-compliant diagonal
+            return False
+    return True
+                
+# Helper function for diag_direction_legal to check if row, col
+# is the first 0 along a diagonal, starting from a wall edge
+# (where wall forms a convex 90 degree turn)
+# The diag direction points towards the wall edge
+def is_edge(subset_grid, row, col, maze_height, maze_width, diag_direction):
+    if (
+        subset_grid[row][col] == 0
+        and row < maze_height - 1
+        and row > 0
+        and col < maze_width - 1
+        and col > 0
+        and subset_grid[row][col + diag_direction[0]] == 0
+        and subset_grid[row + diag_direction[1]][col] == 0
+        and subset_grid[row + diag_direction[1]][col + diag_direction[0]] == 1
+    ):
+        return True
+    return False
 
 
 # Function to check if path width larger than necessary

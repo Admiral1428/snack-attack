@@ -57,11 +57,11 @@ COLORS["ltgray"] = (212, 212, 212)
 # Level draw instruction text
 DRAW_STRINGS = [
     "Left click or use arrow keys to",
-    "draw maze. Right click to undo.",
+    "draw maze. Right click to erase.",
+    "X to undo last drawn position.",
     "",
     "W to cycle wall color",
     "A to end maze and place assets",
-    "",
     "F to cycle level speed:",
     "",
     "J to cycle # corn enemies",
@@ -164,15 +164,15 @@ LEVEL_SPEED_ORDER = ("slow", "medium", "fast", "frantic")
 # Locations to draw text (x, y, delta-y if applicable)
 TEXT_LOC = {}
 # Maze draw text
-TEXT_LOC["maze_draw"] = (1140, 50, 50)
-TEXT_LOC["level_speed"] = (1450, 350)
-TEXT_LOC["corns"] = (1165, 760)
-TEXT_LOC["tomatoes"] = (1305, 760)
-TEXT_LOC["pumpkins"] = (1445, 760)
+TEXT_LOC["maze_draw"] = (1120, 50, 50)
+TEXT_LOC["level_speed"] = (1455, 350)
+TEXT_LOC["corn"] = (1168, 760)
+TEXT_LOC["tomato"] = (1306, 760)
+TEXT_LOC["pumpkin"] = (1448, 760)
 # Maze asset placement text
-TEXT_LOC["place_assets_row_1"] = (1140, 100, 40)
-TEXT_LOC["place_assets"] = (1140, 100, 50)
-TEXT_LOC["assets"] = (1140, 400, 30)
+TEXT_LOC["place_assets_row_1"] = (1120, 100, 40)
+TEXT_LOC["place_assets"] = (1120, 100, 50)
+TEXT_LOC["assets"] = (1130, 400, 30)
 # Title screen text
 TEXT_LOC["animation_info"] = (1140, 50, 50)
 TEXT_LOC["title"] = (275, 200)
@@ -200,12 +200,13 @@ IMAGE_LOC["pumpkin"] = (1430, 700)
 BLACK_RECTS = {}
 BLACK_RECTS["controls"] = (1130, 290, 450, 300)
 BLACK_RECTS["animation"] = (1130, 240, 300, 50)
+BLACK_RECTS["assets"] = (1110, 390, 370, 260)
 WHITE_RECTS = {}
-WHITE_RECTS["assets"] = (1140, 50, WIDTH - 1140, HEIGHT - 50)
+WHITE_RECTS["assets"] = (1120, 50, WIDTH - 1140, HEIGHT - 50)
 WHITE_RECTS["speed"] = (1450, 350, 400, 100)
-WHITE_RECTS["corns"] = (1170, 780, BLOCK_WIDTH * SCALE_FACTOR)
-WHITE_RECTS["tomatoes"] = (1310, 780, BLOCK_WIDTH * SCALE_FACTOR)
-WHITE_RECTS["pumpkins"] = (1450, 780, BLOCK_WIDTH * SCALE_FACTOR)
+WHITE_RECTS["corn"] = (1170, 780, BLOCK_WIDTH * SCALE_FACTOR)
+WHITE_RECTS["tomato"] = (1310, 780, BLOCK_WIDTH * SCALE_FACTOR)
+WHITE_RECTS["pumpkin"] = (1450, 780, BLOCK_WIDTH * SCALE_FACTOR)
 
 
 # Set game tick speed to such that movement calculation is no more than one
