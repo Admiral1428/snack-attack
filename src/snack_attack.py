@@ -140,6 +140,7 @@ while flags.running:
             screen,
             0.003,
             pygame.K_F10,
+            None,
         )
 
         # Create maze grid based on fidelity

@@ -1,4 +1,5 @@
 import pygame
+from settings import config as cfg
 from builder.action import (
     export_maze_files,
     change_maze_color,
@@ -6,7 +7,9 @@ from builder.action import (
     cycle_enemy_quantity,
     init_asset_placement,
     assign_asset_loc,
+    import_maze_from_file,
 )
+from rect.draw import draw_maze
 
 
 # Function to handle inputs for level builder
@@ -30,6 +33,7 @@ def process_input(
     maze_color_index,
     asset_letters,
     asset_defs,
+    shifted_coords_history,
 ):
     current_arrow = None
     flags.arrow_pressed = False
@@ -46,6 +50,31 @@ def process_input(
             flags.mouse_left_held = False
         elif event.button == 3:  # Right mouse button
             flags.mouse_right_held = False
+            if flags.draw_dots:
+                # Re-draw maze without center dots
+                chosen_coords_draw = [
+                    (
+                        x - cfg.DRAW_IMAGE_X - image_boundary,
+                        y - cfg.DRAW_IMAGE_Y - image_boundary,
+                    )
+                    for x, y in chosen_coords
+                ]
+                draw_maze(
+                    cfg.DRAW_IMAGE_X + image_boundary,
+                    cfg.DRAW_IMAGE_Y + image_boundary,
+                    0,
+                    maze_width,
+                    maze_height,
+                    int(block_width),
+                    maze_colors[maze_color_index],
+                    cfg.COLORS["black"],
+                    chosen_coords_draw,
+                    screen,
+                    0,
+                    None,
+                    None,
+                )
+                flags.draw_dots = False
     elif event.type == pygame.KEYDOWN:
         if flags.maze_draw and event.key in [
             pygame.K_UP,
@@ -105,6 +134,12 @@ def process_input(
             enemy_index = cycle_enemy_quantity(
                 "pumpkin", enemy_index, enemy_quantity, screen, fonts, dirty_rects
             )
+        elif event.key == pygame.K_ESCAPE and flags.maze_draw:
+            chosen_coords, shifted_coords_history, maze_color_index = (
+                import_maze_from_file(
+                    image_boundary, maze_width, maze_height, block_width, screen
+                )
+            )
         elif event.key == pygame.K_a:
             asset_letters, asset_defs = init_asset_placement(
                 chosen_coords,
@@ -139,4 +174,6 @@ def process_input(
         maze_color_index,
         asset_letters,
         asset_defs,
+        shifted_coords_history,
+        chosen_coords,
     )

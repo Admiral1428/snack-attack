@@ -218,6 +218,7 @@ def run_title_screen(
                 screen,
                 0,
                 None,
+                None,
             )
 
             # Print game info and instructions

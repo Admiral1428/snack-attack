@@ -111,14 +111,7 @@ def draw_path(
     flags.arrow_pressed = False
 
     # Coarsen inputs prior to checking maze grid to optimize runtime
-    coords_scaled = []
-    for coord in chosen_coords:
-        coords_scaled.append(
-            (
-                int((coord[0] - cfg.DRAW_IMAGE_X - image_boundary) / cfg.SCALE_FACTOR),
-                int((coord[1] - cfg.DRAW_IMAGE_Y - image_boundary) / cfg.SCALE_FACTOR),
-            )
-        )
+    coords_scaled = scale_coords(chosen_coords, image_boundary)
     new_center = (
         int((my_rect.center[0] - cfg.DRAW_IMAGE_X - image_boundary) / cfg.SCALE_FACTOR),
         int((my_rect.center[1] - cfg.DRAW_IMAGE_Y - image_boundary) / cfg.SCALE_FACTOR),
@@ -166,6 +159,7 @@ def erase_and_redraw(
     screen,
     dirty_rects,
     chosen_coords,
+    dot_color,
 ):
     # Draw a block overtop the old coordinate
     my_rect = define_rect(cur_coord, block_width)
@@ -177,6 +171,12 @@ def erase_and_redraw(
         temp_rect = define_rect(coord, block_width)
         if temp_rect.colliderect(my_rect):
             draw_square(temp_rect, screen, cfg.COLORS["black"], dirty_rects)
+
+    # Draw dots to help show path if color specified
+    if dot_color:
+        for coord in chosen_coords:
+            temp_rect = define_rect(coord, int(block_width / 12))
+            draw_square(temp_rect, screen, dot_color, dirty_rects)
 
 
 # Function to erase path at current mouse location
@@ -207,20 +207,7 @@ def erase_path(
         temp_coords = chosen_coords.copy()
         temp_coords.remove(my_rect.center)
         # Coarsen inputs prior to checking maze grid to optimize runtime
-        coords_scaled = []
-        for coord in temp_coords:
-            coords_scaled.append(
-                (
-                    int(
-                        (coord[0] - cfg.DRAW_IMAGE_X - image_boundary)
-                        / cfg.SCALE_FACTOR
-                    ),
-                    int(
-                        (coord[1] - cfg.DRAW_IMAGE_Y - image_boundary)
-                        / cfg.SCALE_FACTOR
-                    ),
-                )
-            )
+        coords_scaled = scale_coords(temp_coords, image_boundary)
         if rect_gives_uniform_path(
             coords_scaled,
             None,
@@ -243,6 +230,7 @@ def erase_path(
                 screen,
                 dirty_rects,
                 chosen_coords,
+                cfg.COLORS["white"],
             )
 
 
@@ -271,6 +259,7 @@ def undo_path_rect(
         screen,
         dirty_rects,
         chosen_coords,
+        None,
     )
 
     # Reset flag for right click
@@ -300,3 +289,16 @@ def undo_asset_placement(
     flags.mouse_right_click = False
 
     return flags
+
+
+# Function to scale coordinates
+def scale_coords(coords, image_boundary):
+    coords_scaled = []
+    for coord in coords:
+        coords_scaled.append(
+            (
+                int((coord[0] - cfg.DRAW_IMAGE_X - image_boundary) / cfg.SCALE_FACTOR),
+                int((coord[1] - cfg.DRAW_IMAGE_Y - image_boundary) / cfg.SCALE_FACTOR),
+            )
+        )
+    return coords_scaled

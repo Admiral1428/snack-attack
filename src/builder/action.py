@@ -1,23 +1,17 @@
-import os
 import pygame
-import time
-import tkinter as tk
 from tkinter import messagebox, filedialog
 from settings import config as cfg
-from rect.utils import define_rect, shift_rect_to_divisible_pos
+from rect.utils import define_rect
 from rect.draw import draw_square, draw_asset, draw_maze
 from grid.utils import invert_maze_to_grid, grid_space
-from fileio.load import import_image_dir
+from fileio.load import read_csv_path
 from fileio.export import (
     export_path_coords_to_csv,
     export_asset_coords_to_csv,
     export_metadata,
     move_files,
 )
-from path.utils import (
-    rect_within_boundary,
-    rect_gives_uniform_path,
-)
+
 
 # Function to export screenshot
 def export_screenshot(maze_width, maze_height, image_boundary, screen, filename):
@@ -238,6 +232,8 @@ def init_asset_placement(
         # Overwrite old text
         right_rect = pygame.Rect(cfg.WHITE_RECTS["assets"])
         screen.fill(cfg.COLORS["white"], right_rect)
+        bottom_rect = pygame.Rect(cfg.WHITE_RECTS["maze_load"])
+        screen.fill(cfg.COLORS["white"], bottom_rect)
 
         # Display instruction text
         for row, text_line in enumerate(cfg.ASSET_STRINGS):
@@ -266,8 +262,20 @@ def init_asset_placement(
 
     return asset_letters, asset_defs
 
+
 # Function to assign asset to a location
-def assign_asset_loc(event, asset_coords, chosen_coords, dirty_rects, screen, image_boundary, min_block_spacing, block_width, fonts, asset_defs):
+def assign_asset_loc(
+    event,
+    asset_coords,
+    chosen_coords,
+    dirty_rects,
+    screen,
+    image_boundary,
+    min_block_spacing,
+    block_width,
+    fonts,
+    asset_defs,
+):
     # If asset key is pressed once this mode chosen, draw asset
     matching_asset = [
         asset
@@ -298,5 +306,60 @@ def assign_asset_loc(event, asset_coords, chosen_coords, dirty_rects, screen, im
             for asset in asset_defs:
                 if asset.get("letter") == matching_asset[0].get("letter"):
                     asset["location"] = asset_coord_result
-    
+
     return asset_defs
+
+
+# Function to load maze from file
+def import_maze_from_file(image_boundary, maze_width, maze_height, block_width, screen):
+    file_path = filedialog.askopenfilename(
+        title="Select a level path coordinates CSV file",
+        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+        initialdir="../assets/levels/",
+    )
+
+    maze_coords = read_csv_path(file_path)
+
+    # Draw maze onto screen, with a gray boundary
+    # and inside drawable teal area
+    draw_maze(
+        cfg.DRAW_IMAGE_X,
+        cfg.DRAW_IMAGE_Y,
+        image_boundary,
+        maze_width,
+        maze_height,
+        block_width,
+        cfg.COLORS["ltgray"],
+        cfg.COLORS["ltgray"],
+        [],
+        screen,
+        0,
+        None,
+        None,
+    )
+    draw_maze(
+        cfg.DRAW_IMAGE_X + image_boundary,
+        cfg.DRAW_IMAGE_Y + image_boundary,
+        0,
+        maze_width,
+        maze_height,
+        block_width,
+        cfg.COLORS["teal"],
+        cfg.COLORS["black"],
+        maze_coords,
+        screen,
+        0,
+        None,
+        None,
+    )
+
+    # Apply screen offsets
+    chosen_coords = [
+        (x + cfg.DRAW_IMAGE_X + image_boundary, y + cfg.DRAW_IMAGE_Y + image_boundary)
+        for x, y in maze_coords
+    ]
+    shifted_coords_history = chosen_coords.copy()
+
+    maze_color_index = 0
+
+    return chosen_coords, shifted_coords_history, maze_color_index

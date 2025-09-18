@@ -108,6 +108,7 @@ def draw_maze(
     screen,
     time_delay,
     quit_key,
+    dot_color,
 ):
     outer_rect = pygame.Rect(
         draw_image_x,
@@ -147,4 +148,13 @@ def draw_maze(
 
         if exit_key_selected:
             break
+    # Overlay dots to show path if color specified
+    if dot_color:
+        for coord in path_coords:
+            shifted_coord = (
+                coord[0] + draw_image_x + image_boundary,
+                coord[1] + draw_image_x + image_boundary,
+            )
+            my_rect = define_rect(shifted_coord, int(block_width / 12))
+            draw_square(my_rect, screen, dot_color, dirty_rects)
     return exit_key_selected

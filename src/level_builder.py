@@ -50,6 +50,7 @@ draw_maze(
     screen,
     0,
     None,
+    None,
 )
 draw_maze(
     cfg.DRAW_IMAGE_X + image_boundary,
@@ -64,6 +65,7 @@ draw_maze(
     screen,
     0,
     None,
+    None,
 )
 
 # Display instruction text
@@ -71,7 +73,6 @@ print_draw_instructions(fonts, screen)
 
 # Initialize enemy images and quantities
 enemy_quantity, enemy_index, images, enemy_image = init_enemies()
-
 
 # Draw enemy sprites
 draw_enemies(screen, enemy_image["corn"], enemy_image["tomato"], enemy_image["pumpkin"])
@@ -103,6 +104,8 @@ while flags.running:
             maze_color_index,
             asset_letters,
             asset_defs,
+            shifted_coords_history,
+            chosen_coords,
         ) = process_input(
             event,
             flags,
@@ -123,6 +126,7 @@ while flags.running:
             maze_color_index,
             asset_letters,
             asset_defs,
+            shifted_coords_history,
         )
 
     # Limit input collection to 60 hz to limit CPU overhead
@@ -161,6 +165,34 @@ while flags.running:
         )
     # Erase path at mouse location
     elif flags.mouse_right_held and len(chosen_coords) > 0 and flags.maze_draw:
+        if not flags.draw_dots:
+            # Reveal center of coordinates using dots to make erasing easier
+            chosen_coords_draw = [
+                (
+                    x - cfg.DRAW_IMAGE_X - image_boundary,
+                    y - cfg.DRAW_IMAGE_Y - image_boundary,
+                )
+                for x, y in chosen_coords
+            ]
+
+            draw_maze(
+                cfg.DRAW_IMAGE_X + image_boundary,
+                cfg.DRAW_IMAGE_Y + image_boundary,
+                0,
+                maze_width,
+                maze_height,
+                int(block_width),
+                maze_colors[maze_color_index],
+                cfg.COLORS["black"],
+                chosen_coords_draw,
+                screen,
+                0,
+                None,
+                cfg.COLORS["white"],
+            )
+
+            flags.draw_dots = True
+
         erase_path(
             block_width,
             min_block_spacing,
