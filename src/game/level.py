@@ -13,8 +13,8 @@ def print_level_text(screen, levels, level_index, fonts, flags, controls_option)
         screen.blit(text_surface, (locs[0], locs[1] + row * locs[2]))
     # Trim level name
     folder_name = levels[level_index].get("folder")
-    if len(folder_name) > 8:
-        folder_name = folder_name[:8] + "..."
+    if len(folder_name) > 10:
+        folder_name = folder_name[:10] + "..."
     if flags.reached_last_level:
         text_surface = fonts["normal"].render(
             folder_name + " (reprise)", True, cfg.COLORS["red"]

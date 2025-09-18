@@ -313,7 +313,7 @@ LIVES_DEFAULT = 5
 # Title text
 TITLE_TEXT = "Snack Attack"
 AUTHOR_TEXT = "Programmed in Python by Tim Roble"
-VERSION_TEXT = "Version 1.1.0, September 2025"
+VERSION_TEXT = "Version 1.1.1, September 2025"
 PROCEED_TEXT = "Press Spacebar to Start Game"
 
 # Animation info strings
