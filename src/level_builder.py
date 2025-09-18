@@ -144,8 +144,8 @@ while flags.running:
         flags, arrow_index = draw_path(
             flags,
             chosen_coords,
-            maze_height,
             maze_width,
+            maze_height,
             image_boundary,
             block_width,
             min_block_spacing,
