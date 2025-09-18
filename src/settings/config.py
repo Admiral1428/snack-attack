@@ -69,6 +69,9 @@ DRAW_STRINGS = [
     "L to cycle # pumpkin enemies",
 ]
 
+# Load maze instruction text
+LOAD_TEXT = "Press Escape to import an existing maze"
+
 # Level asset placement instruction text
 ASSET_STRINGS = [
     "Key (see list below) to place",
@@ -169,6 +172,7 @@ TEXT_LOC["level_speed"] = (1455, 350)
 TEXT_LOC["corn"] = (1168, 760)
 TEXT_LOC["tomato"] = (1306, 760)
 TEXT_LOC["pumpkin"] = (1448, 760)
+TEXT_LOC["maze_load"] = (275, 850)
 # Maze asset placement text
 TEXT_LOC["place_assets_row_1"] = (1120, 100, 40)
 TEXT_LOC["place_assets"] = (1120, 100, 50)
@@ -207,6 +211,7 @@ WHITE_RECTS["speed"] = (1450, 350, 400, 100)
 WHITE_RECTS["corn"] = (1170, 780, BLOCK_WIDTH * SCALE_FACTOR)
 WHITE_RECTS["tomato"] = (1310, 780, BLOCK_WIDTH * SCALE_FACTOR)
 WHITE_RECTS["pumpkin"] = (1450, 780, BLOCK_WIDTH * SCALE_FACTOR)
+WHITE_RECTS["maze_load"] = (250, 850, 700, 100)
 
 
 # Set game tick speed to such that movement calculation is no more than one

@@ -103,6 +103,10 @@ def print_draw_instructions(fonts, screen):
         loc = cfg.TEXT_LOC["maze_draw"]
         screen.blit(text_surface, (loc[0], loc[1] + row * loc[2]))
 
+    text_surface = fonts["normal"].render(cfg.LOAD_TEXT, True, cfg.COLORS["black"])
+    loc = cfg.TEXT_LOC["maze_load"]
+    screen.blit(text_surface, (loc[0], loc[1]))
+
 
 # Function to load enemy images and max quantities
 def init_enemies():
@@ -195,3 +199,4 @@ class Flags:
         self.arrow_pressed = False
         self.maze_draw = True
         self.x_pressed = True
+        self.draw_dots = False

@@ -100,10 +100,10 @@ def diag_direction_legal(
     found_wall = False
     while not found_wall and not found_boundary:
         if (
-            row - diag_width < 0
-            or col - diag_width < 0
-            or row + diag_width == maze_height
-            or col + diag_width == maze_width
+            row + diag_width * diag_direction[1] < 0
+            or col + diag_width * diag_direction[0] < 0
+            or row + diag_width * diag_direction[1] == maze_height
+            or col + diag_width * diag_direction[0] == maze_width
         ):
             found_boundary = True
         elif (
