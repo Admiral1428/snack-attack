@@ -4,7 +4,7 @@
 The game is inspired by *Mine Shaft*, released on the IBM PCjr in 1984.
 
 <br>
-<img width="1602" height="932" alt="screenshot_03" src="https://github.com/user-attachments/assets/e8e10276-6bfb-49a6-b99d-dfd5298f360e" />
+<img width="1602" height="932" alt="new_title_screenshot" src="https://github.com/user-attachments/assets/4c7a1e65-489d-4596-8ad9-eb844c2f8922" />
 
 ## Video Demo
 
@@ -35,22 +35,28 @@ The first challenge I faced was determining how to produce levels which followed
 ![screenshot_patterns](https://github.com/user-attachments/assets/73d19c4d-9881-409c-9223-4d45492815e3)
 
 ## Level Builder
-These compliance checks are enforced each time the user attempts to draw a new block in the level builder. The first mode of the level builder allows the user to draw the maze by left-clicking the mouse on a desired location, or by using the arrow keys to traverse relative to the most recently added coordinate. An external or built-in touchpad can also be used, similar to the mouse option. Undoing the last added coordinate is done by right-clicking with the mouse. Additionally, this mode allows the user to toggle between 10 maze color options, cycle the speed at which the player and enemies will move, and cycle the number of enemies of each type. Corn and Tomato enemies can be destroyed by the player, while Pumpkins are invincible. 
+These compliance checks are enforced each time the user attempts to draw a new block in the level builder. The first mode of the level builder allows the user to draw the maze by left-clicking the mouse on a desired location, or by using the arrow keys to traverse relative to the most recently added coordinate. An external or built-in touchpad can also be used, similar to the mouse option. Undoing the last added coordinate is done by pressing the `X` key. Additionally, this mode allows the user to toggle between 10 maze color options, cycle the speed at which the player and enemies will move, and cycle the number of enemies of each type. Corn and Tomato enemies can be destroyed by the player, while Pumpkins are invincible. Pressing `Escape` allows the user to select a `level_path_coordinates.csv` file from a prior maze.
 
 <br>
-<img width="1602" height="932" alt="screenshot_01" src="https://github.com/user-attachments/assets/a5d60fd9-e96a-4ddf-92be-94fd67e34dd4" />
+<img width="1602" height="932" alt="new_screenshot_01" src="https://github.com/user-attachments/assets/d20613d3-d187-4b0a-b906-5757a508048a" />
+<br><br>
+
+A specific coordinate can be erased by right-clicking with the mouse. This right-click reveals small white dots representing the chosen coordinates, which are provided as a visual aid.
+
+<br>
+<img width="1602" height="932" alt="new_screenshot_02" src="https://github.com/user-attachments/assets/b15fa252-044c-494b-bdb4-5caff92e8f1f" />
 <br><br>
 
 Once the user hits the `A` key to finalize the level, the second mode is activated which allows for the selection of locations for each of the relevant assets. This includes the player starting location, the player's respawn location if destroyed, the starting location for all enemy types, four item locations, and the exit location, which will appear once all enemies are destroyed or all items are collected. By hovering the mouse over a desired location in the maze and pressing the appropriate key, the asset is placed visually, and its coordinates are later exported to a file. Right-clicking is used to undo the last action.
 
 <br>
-<img width="1602" height="932" alt="screenshot_02" src="https://github.com/user-attachments/assets/b8be3638-b1b4-44b3-b0b1-be110928f0a7" />
+<img width="1602" height="932" alt="new_screenshot_03" src="https://github.com/user-attachments/assets/70d07794-e590-4986-9bfb-0f3229bbbfb5" />
 <br><br>
 
 Upon pressing `C` to export the level, the user is prompted to create a folder within the ``levels`` folder. This is where the levels are loaded in the game, in ascending alphabetical order. This example level is shown below in a gameplay screenshot:
 
 <br>
-<img width="1602" height="932" alt="screenshot_04" src="https://github.com/user-attachments/assets/bc41e293-adbc-4514-846d-6938d4a2b6bd" />
+<img width="1602" height="932" alt="new_screenshot_04" src="https://github.com/user-attachments/assets/19d0043d-2c3c-43f8-a522-17c1b3963cad" />
 
 ## Gameplay
 Upon completing the final level in the ``levels`` folder, these levels are repeated using the frantic game speed, with a pre-defined number of enemies. This behavior is similar to that in the *Mine Shaft* game. It is possible, however, to add countless levels to this folder to delay when this behavior is encountered. The game includes 10 levels, with a screenshot of the third level shown as follows:
@@ -70,12 +76,11 @@ Player lives are decremented upon contact with an enemy and increase by one if a
 ## Level Builder Demo
 The following video demonstrates the complete use of the level editor and game executables: 
 
-<video src="https://github.com/user-attachments/assets/a3260e43-b35d-4a6f-a8db-b5ff5325fa2b" width="1600" height="900" controls></video>
+<video src="https://github.com/user-attachments/assets/a7f9fa59-6207-494d-a7d4-eac32576fb12" width="1600" height="900" controls></video>
 
 ## Features Wishlist
 Great joy was found in this project, and work on adding new features would continue if time permitted. Potential features include:
 1. Resizable window and full screen modes, maintaining aspect ratio.
-2. Ability to import and edit previous levels, erasing coordinates already drawn.
-3. Procedural level generation with a custom algorithm or AI model.
-4. Improved enemy pathfinding, potentially using A*, BFS, or DFS algorithms.
-5. Further code organization and performance optimizations.
+2. Procedural level generation with a custom algorithm or AI model.
+3. Improved enemy pathfinding, potentially using A*, BFS, or DFS algorithms.
+4. Further performance optimizations.
