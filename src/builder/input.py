@@ -159,6 +159,8 @@ def process_input(
                 chosen_coords,
                 dirty_rects,
                 screen,
+                maze_width,
+                maze_height,
                 image_boundary,
                 min_block_spacing,
                 block_width,
