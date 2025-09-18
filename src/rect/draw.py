@@ -1,6 +1,12 @@
 import pygame
 import time
+from settings import config as cfg
 from rect.utils import define_rect, shift_rect_to_divisible_pos
+from builder.utils import scale_coords
+from path.utils import (
+    rect_within_boundary,
+    rect_gives_uniform_path,
+)
 
 
 # Function to draw square onto the screen
@@ -22,6 +28,8 @@ def draw_asset(
     screen,
     draw_image_x,
     draw_image_y,
+    maze_width,
+    maze_height,
     image_boundary,
     min_block_spacing,
     block_width,
@@ -71,8 +79,37 @@ def draw_asset(
             asset_collision = True
             break
 
+    # Check if path legal (since interpolated position may be within a wall)
+    # Coarsen inputs prior to checking maze grid to optimize runtime
+    coords_scaled = scale_coords(chosen_coords, image_boundary)
+    new_center = (
+        int((my_rect.center[0] - cfg.DRAW_IMAGE_X - image_boundary) / cfg.SCALE_FACTOR),
+        int((my_rect.center[1] - cfg.DRAW_IMAGE_Y - image_boundary) / cfg.SCALE_FACTOR),
+    )
+    my_rect_scaled = define_rect(new_center, cfg.BLOCK_WIDTH)
+
+    legal_path_position = False
+    if rect_within_boundary(
+        my_rect,
+        cfg.DRAW_IMAGE_X,
+        cfg.DRAW_IMAGE_Y,
+        image_boundary,
+        maze_width,
+        maze_height,
+    ) and rect_gives_uniform_path(
+        coords_scaled,
+        my_rect_scaled,
+        cfg.MAZE_WIDTH,
+        cfg.MAZE_HEIGHT,
+        0,
+        0,
+        0,
+        cfg.BLOCK_WIDTH,
+    ):
+        legal_path_position = True
+
     # If asset does not collide with another asset, and it's within maze path
-    if not asset_collision and (
+    if legal_path_position and not asset_collision and (
         my_rect.center in chosen_coords or vert_interp or horz_interp
     ):
         # Create square with outer boundary of appropriate color,

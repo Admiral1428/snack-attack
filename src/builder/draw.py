@@ -7,7 +7,7 @@ from path.utils import (
     rect_within_boundary,
     rect_gives_uniform_path,
 )
-
+from builder.utils import scale_coords
 
 # Function to process inputs for path drawing
 def process_path_inputs(
@@ -62,8 +62,8 @@ def process_path_inputs(
 def draw_path(
     flags,
     chosen_coords,
-    maze_height,
     maze_width,
+    maze_height,
     image_boundary,
     block_width,
     min_block_spacing,
@@ -290,15 +290,3 @@ def undo_asset_placement(
 
     return flags
 
-
-# Function to scale coordinates
-def scale_coords(coords, image_boundary):
-    coords_scaled = []
-    for coord in coords:
-        coords_scaled.append(
-            (
-                int((coord[0] - cfg.DRAW_IMAGE_X - image_boundary) / cfg.SCALE_FACTOR),
-                int((coord[1] - cfg.DRAW_IMAGE_Y - image_boundary) / cfg.SCALE_FACTOR),
-            )
-        )
-    return coords_scaled
