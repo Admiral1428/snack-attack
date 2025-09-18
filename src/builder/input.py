@@ -140,7 +140,7 @@ def process_input(
                     image_boundary, maze_width, maze_height, block_width, screen
                 )
             )
-        elif event.key == pygame.K_a:
+        elif event.key == pygame.K_a and flags.maze_draw:
             asset_letters, asset_defs = init_asset_placement(
                 chosen_coords,
                 image_boundary,
