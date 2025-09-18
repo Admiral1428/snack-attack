@@ -37,7 +37,7 @@ def rect_within_boundary(
 
 # Function to check path diagonal width
 # Only need to check edges, not corners
-def edge_diagonals_legal(subset_grid, maze_height, maze_width, block_width):
+def edge_diagonals_legal(subset_grid, maze_width, maze_height, block_width):
     for row in range(maze_height):
         for col in range(maze_width):
             # Diagonal must be equal to least block_width
@@ -46,7 +46,7 @@ def edge_diagonals_legal(subset_grid, maze_height, maze_width, block_width):
             #    /
             # 0,0
             # 1,0
-            if is_edge(subset_grid, row, col, maze_height, maze_width, (-1, 1)):
+            if is_edge(subset_grid, row, col, maze_width, maze_height, (-1, 1)):
                 if not diag_direction_legal(
                     subset_grid, row, col, maze_width, maze_height, block_width, (1, -1)
                 ):
@@ -56,7 +56,7 @@ def edge_diagonals_legal(subset_grid, maze_height, maze_width, block_width):
             # 1,0
             # 0,0
             #    \
-            elif is_edge(subset_grid, row, col, maze_height, maze_width, (-1, -1)):
+            elif is_edge(subset_grid, row, col, maze_width, maze_height, (-1, -1)):
                 if not diag_direction_legal(
                     subset_grid, row, col, maze_width, maze_height, block_width, (1, 1)
                 ):
@@ -66,7 +66,7 @@ def edge_diagonals_legal(subset_grid, maze_height, maze_width, block_width):
             # \
             #  0,0
             #  0,1
-            elif is_edge(subset_grid, row, col, maze_height, maze_width, (1, 1)):
+            elif is_edge(subset_grid, row, col, maze_width, maze_height, (1, 1)):
                 if not diag_direction_legal(
                     subset_grid,
                     row,
@@ -82,7 +82,7 @@ def edge_diagonals_legal(subset_grid, maze_height, maze_width, block_width):
             #  0,1
             #  0,0
             # /
-            elif is_edge(subset_grid, row, col, maze_height, maze_width, (1, -1)):
+            elif is_edge(subset_grid, row, col, maze_width, maze_height, (1, -1)):
                 if not diag_direction_legal(
                     subset_grid, row, col, maze_width, maze_height, block_width, (-1, 1)
                 ):
@@ -124,8 +124,8 @@ def diag_direction_legal(
             subset_grid,
             row + diag_width * diag_direction[1],
             col + diag_width * diag_direction[0],
-            maze_height,
             maze_width,
+            maze_height,
             diag_direction,
         ):
             # Found instance of non-compliant diagonal
@@ -137,7 +137,7 @@ def diag_direction_legal(
 # is the first 0 along a diagonal, starting from a wall edge
 # (where wall forms a convex 90 degree turn)
 # The diag direction points towards the wall edge
-def is_edge(subset_grid, row, col, maze_height, maze_width, diag_direction):
+def is_edge(subset_grid, row, col, maze_width, maze_height, diag_direction):
     if (
         subset_grid[row][col] == 0
         and row < maze_height - 1
@@ -235,7 +235,7 @@ def rect_gives_uniform_path(
         # Check diagonal dimensions between edges if the first check passed
         if overlayed_squares_check:
             return edge_diagonals_legal(
-                subset_grid, maze_height, maze_width, block_width
+                subset_grid, maze_width, maze_height, block_width
             )
         return False
 
