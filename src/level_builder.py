@@ -129,8 +129,12 @@ while flags.running:
             shifted_coords_history,
         )
 
-    # Limit input collection to 60 hz to limit CPU overhead
-    clock.tick(60)
+    if flags.maze_draw:
+        # Limit maze draw input collection to 60 hz to limit CPU overhead
+        clock.tick(60)
+    else:
+        # For smoother asset placement, allow higher tick rate
+        clock.tick(360)
 
     # Check if an arrow key was pressed, or if left mouse is currently held
     # down (outside of event loop) If so, draw a new square at that location,
