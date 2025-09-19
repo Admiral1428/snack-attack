@@ -2,6 +2,7 @@ import time
 import pygame
 from settings import config as cfg
 from asset.sprite import Sprite
+from path.pathfind import create_flow_field
 
 
 # Function to reset player and enemies after player destroyed
@@ -19,10 +20,13 @@ def reset_actors(flags, player, corns, tomatoes, pumpkins, asset_coord):
             enemy.toggle_spawn()
         if enemy.is_invincible:
             enemy.reset_image()
+        if enemy.has_seen_player():
+            enemy.toggle_seen_player()
     projectile = []
     blast = []
+    flow_field = None
 
-    return start_time, spawned_enemies, projectile, blast
+    return start_time, spawned_enemies, projectile, blast, flow_field
 
 
 # Function to determine whether to respawn enemy based on current time
@@ -43,7 +47,14 @@ def determine_spawn(start_time, spawned_enemies, seconds_to_spawn, enemies):
 
 # Function to initialize projectile
 def init_projectile(
-    flags, player, block_width, maze_factor, images, sounds, pixels_per_second
+    flags,
+    player,
+    block_width,
+    maze_factor,
+    images,
+    sounds,
+    pixels_per_second,
+    rotate_image,
 ):
     flags.screen_change = True
     flags.fire_pressed = False
@@ -66,6 +77,7 @@ def init_projectile(
         True,
         int(block_width / (maze_factor * 4)),
         int(block_width / (maze_factor * 4)),
+        rotate_image,
     )
     projectile.set_desired_direction(projectile_direction[0], projectile_direction[1])
     sounds["proj_fire"].play()
@@ -74,17 +86,70 @@ def init_projectile(
 
 
 # Function to move sprites
-def move_sprites(player, projectile, enemies, flags, maze_grid, game_tick):
+def move_sprites(
+    player,
+    projectile,
+    enemies,
+    flags,
+    maze_grid,
+    game_tick,
+    maze_graph,
+    maze_graph_coords,
+    maze_factor,
+    flow_field,
+    barrier_sprites,
+):
     player_move = False
     proj_move = False
     enemy_move = False
 
     if player:
+        old_location = player.get_center_position()
         player_move = player.perform_move(maze_grid, game_tick)
+        player_graph_coord = player.get_center_position()
+        if old_location != player_graph_coord:
+            player_graph_coord = tuple(
+                int(element * maze_factor / cfg.SCALE_FACTOR)
+                for element in player_graph_coord
+            )
+            if player_graph_coord in maze_graph_coords:
+                flow_field = create_flow_field(
+                    maze_graph, maze_graph_coords, player_graph_coord
+                )
     if projectile:
         proj_move = projectile.perform_move(maze_grid, game_tick)
     for enemy in enemies:
-        enemy.set_navigate_direction(player, maze_grid, game_tick)
+        # If collision with barrier sprite, turn enemy around
+        for sprite in barrier_sprites:
+            if (
+                barrier_sprites[sprite].collide_check(enemy)
+                and (enemy.move_dist + enemy.speed * game_tick) >= 1
+            ):
+                cur_direction = enemy.get_direction()
+                enemy.set_desired_direction(
+                    -1 * cur_direction[0], -1 * cur_direction[1]
+                )
+                if enemy.has_seen_player():
+                    enemy.toggle_seen_player()
+                if enemy.is_path_finding():
+                    enemy.toggle_path_finding()
+
+        # Perform pathfinding if flow field has been computed
+        # and if the enemy has seen the player with an unobscured path
+        if flow_field and enemy.has_seen_player():
+            enemy_graph_coord = enemy.get_center_position()
+            enemy_graph_coord = tuple(
+                int(element * maze_factor / cfg.SCALE_FACTOR)
+                for element in enemy_graph_coord
+            )
+            if enemy_graph_coord in maze_graph_coords:
+                enemy.set_pathfind_direction(flow_field, enemy_graph_coord)
+            elif not enemy.is_path_finding():
+                enemy.set_navigate_direction(
+                    player, barrier_sprites, maze_grid, game_tick
+                )
+        else:
+            enemy.set_navigate_direction(player, barrier_sprites, maze_grid, game_tick)
         cur_enemy_move = enemy.perform_move(maze_grid, game_tick)
         if not enemy_move:
             enemy_move = cur_enemy_move
@@ -92,7 +157,7 @@ def move_sprites(player, projectile, enemies, flags, maze_grid, game_tick):
     if any([player_move, proj_move, enemy_move]):
         flags.screen_change = True
 
-    return flags
+    return flags, flow_field
 
 
 # Function to move player towards exit if proximity deemed a collision
@@ -122,7 +187,9 @@ def move_to_exit(
 
 
 # Function to initialize blast
-def init_blast(projectile, sounds, flags, images, block_width, maze_factor):
+def init_blast(
+    projectile, sounds, flags, images, block_width, maze_factor, rotate_image
+):
     if projectile.is_stopped():
         sounds["proj_hit_wall"].play()
     flags.screen_change = True
@@ -136,6 +203,7 @@ def init_blast(projectile, sounds, flags, images, block_width, maze_factor):
         False,
         int(block_width / (maze_factor * 4)),
         int(block_width / (maze_factor * 4)),
+        rotate_image,
     )
     blast.animate(images, cfg.IMAGE_SERIES["blast"][1:], cfg.DELAYS["blast"])
 
@@ -178,7 +246,7 @@ def check_enemy_collision(
 
 
 # Function to remove items
-def remove_items(enemies, flags, items, player, score, sounds):
+def remove_items(enemies, flags, items, player, score, sounds, barrier_sprites):
     # If no more enemies, remove remaining items
     delete_items = []
     all_destroyed = all(enemy.is_destroyed() for enemy in enemies)
@@ -199,13 +267,22 @@ def remove_items(enemies, flags, items, player, score, sounds):
     # Delete appropriate items
     for item in delete_items:
         del items[item]
+        del barrier_sprites[item]
 
-    return items, flags, score, all_destroyed
+    return items, flags, score, all_destroyed, barrier_sprites
 
 
 # Function to initialize exit
 def init_exit(
-    flags, all_destroyed, sounds, lives, images, asset_coord, block_width, maze_factor
+    flags,
+    all_destroyed,
+    sounds,
+    lives,
+    images,
+    asset_coord,
+    block_width,
+    maze_factor,
+    rotate_image,
 ):
     flags.screen_change = True
     # Reward player with extra life if all items collected
@@ -218,8 +295,9 @@ def init_exit(
         asset_coord.get("H"),
         0,
         False,
-        int(block_width / (maze_factor * 12)),
+        int(block_width / (maze_factor * 4)),
         block_width,
+        rotate_image,
     )
     flags.exit_created = True
 
@@ -294,7 +372,7 @@ def draw_sprites(
         )
 
     # Draw exit again overtop player if door closing
-    if flags.exit_closing:
+    if cfg.CLOSE_EXIT_OVERTOP and flags.exit_closing:
         sprite_image_data.append(
             exit.draw(cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor)
         )
@@ -387,7 +465,6 @@ def end_game(flags, fonts, screen, sounds):
         text_surface = fonts["normal"].render(text_line, True, cfg.COLORS["yellow"])
         locs = cfg.TEXT_LOC["endgame"]
         screen.blit(text_surface, (locs[0], locs[1] + row * locs[2]))
-    flags.reached_last_level = False
     flags.game_intro = True
     level_index = 0
     score = 0

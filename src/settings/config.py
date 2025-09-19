@@ -17,8 +17,8 @@ FILES["settings"] = "config.csv"
 FILES["grid"] = "level_grid.txt"
 
 # User config, maze fidelity, screen dimensions
-MAZE_FIDELITY_OPTS = ["coarse", "normal", "fine"]
-MAZE_FIDELITY_FACTORS = [4, 2, 1]
+MAZE_FIDELITY_OPTS = ["very coarse", "coarse", "normal", "fine"]
+MAZE_FIDELITY_FACTORS = [8, 4, 2, 1]
 WIDTH, HEIGHT = (1600, 900)
 
 # Define maze properties
@@ -40,7 +40,8 @@ MAX_PUMPKIN = 4
 
 # Define colors
 COLORS = {}
-COLORS["teal"] = (0, 168, 168)
+COLORS["teal"] = (0, 167, 167)
+COLORS["replace_teal"] = (0, 168, 168)
 COLORS["yellow"] = (255, 255, 0)
 COLORS["orange"] = (255, 128, 0)
 COLORS["green"] = (0, 255, 0)
@@ -48,7 +49,9 @@ COLORS["dkgreen"] = (0, 102, 0)
 COLORS["purple"] = (128, 0, 128)
 COLORS["magenta"] = (253, 61, 181)
 COLORS["red"] = (255, 0, 0)
+COLORS["replace_red"] = (100, 0, 0)
 COLORS["blue"] = (0, 0, 255)
+COLORS["replace_blue"] = (0, 0, 100)
 COLORS["gray"] = (128, 128, 128)
 COLORS["white"] = (255, 255, 255)
 COLORS["black"] = (0, 0, 0)
@@ -287,6 +290,9 @@ IMAGE_SERIES["door"] = (
     "door_open_04",
 )
 
+# Flag for whether to animate the exit closing on top of player
+CLOSE_EXIT_OVERTOP = True
+
 # Delays for animations
 DELAYS = {}
 DELAYS["corn"] = [0.1, 0.15, 0.2, 0.25, 0.3]
@@ -313,7 +319,7 @@ LIVES_DEFAULT = 5
 # Title text
 TITLE_TEXT = "Snack Attack"
 AUTHOR_TEXT = "Programmed in Python by Tim Roble"
-VERSION_TEXT = "Version 1.1.1, September 2025"
+VERSION_TEXT = "Version 1.2.0, September 2025"
 PROCEED_TEXT = "Press Spacebar to Start Game"
 
 # Animation info strings

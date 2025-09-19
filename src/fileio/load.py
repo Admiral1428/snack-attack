@@ -43,6 +43,7 @@ def get_levels(directory_path):
             asset_filepath = ""
             metadata_filepath = ""
             path_filepath = ""
+            sprite_colors_filepath = ""
             screenshot_filepath = ""
             for filename in os.listdir(map_path):
                 if filename.lower().endswith("asset_coordinates.csv"):
@@ -51,6 +52,8 @@ def get_levels(directory_path):
                     metadata_filepath = os.path.join(map_path, filename)
                 elif filename.lower().endswith("path_coordinates.csv"):
                     path_filepath = os.path.join(map_path, filename)
+                elif filename.lower().endswith("sprite_colors.csv"):
+                    sprite_colors_filepath = os.path.join(map_path, filename)
                 elif filename.lower().endswith("screenshot.png"):
                     screenshot_filepath = os.path.join(map_path, filename)
             if asset_filepath and metadata_filepath and path_filepath:
@@ -59,6 +62,7 @@ def get_levels(directory_path):
                         "assets": asset_filepath,
                         "metadata": metadata_filepath,
                         "path": path_filepath,
+                        "sprite_colors": sprite_colors_filepath,
                         "screenshot": screenshot_filepath,
                         "folder": folder,
                     }

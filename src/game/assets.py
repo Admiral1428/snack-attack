@@ -15,8 +15,9 @@ def init_items(asset_coord, images, block_width, maze_factor):
                 asset_coord.get(key),
                 0,
                 False,
-                int(block_width / (maze_factor * 6)),
+                int(block_width / (maze_factor * 4)),
                 int(block_width / maze_factor),
+                None,
             )
     return items
 
@@ -30,6 +31,7 @@ def init_enemies(
     pixels_per_second,
     hitbox_size,
     path_size,
+    rotate_image,
     is_invincible,
 ):
     enemy_list = []
@@ -43,6 +45,7 @@ def init_enemies(
                 False,
                 hitbox_size,
                 path_size,
+                rotate_image,
                 is_invincible,
             )
         )
