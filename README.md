@@ -10,6 +10,12 @@ The game is inspired by *Mine Shaft*, released on the IBM PCjr in 1984.
 
 <video src="https://github.com/user-attachments/assets/e3de73c9-39b0-4a71-9bcf-fb77037038db" width="1600" height="900" controls></video>
 
+## Pathfinding behavior
+
+In Release 1.2.0, enemies will now pathfind towards the player using a flow field computed with breadth-first search. This pathfinding is triggered when enemies have a clear line-of-sight to the player, resulting in more intelligent and challenging enemy movement. Additionally, items and exit sprites were modified to act as enemy obstacles, providing some strategic relief for the player.
+
+<video src="https://github.com/user-attachments/assets/4b3928b1-8c6a-4650-9b75-a2e210cff8c2" width="1600" height="900" controls></video>
+
 ## Installation
 
 You can install and run the project in two ways:
