@@ -82,5 +82,5 @@ The following video demonstrates the complete use of the level editor and game e
 Great joy was found in this project, and work on adding new features would continue if time permitted. Potential features include:
 1. Resizable window and full screen modes, maintaining aspect ratio.
 2. Procedural level generation with a custom algorithm or AI model.
-3. Improved enemy pathfinding, potentially using A*, BFS, or DFS algorithms.
+3. Improved enemy pathfinding when near the player, potentially using a flow field across the level grid, generated with the BFS algorithm.
 4. Further performance optimizations.
