@@ -131,7 +131,7 @@ def init_enemies():
             ),
         )
         # Make teal the transparent color
-        images[image].set_colorkey(cfg.COLORS["teal"])
+        images[image].set_colorkey(cfg.COLORS["replace_teal"])
 
     enemy_image = {}
     enemy_image["corn"] = images["corn"]

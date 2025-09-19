@@ -179,9 +179,12 @@ def draw_maze(
                 if event.key == quit_key:
                     quit_key_down = True
             if event.type == pygame.KEYUP:
-                if event.key == quit_key and quit_key_down:
-                    exit_key_selected = True
-                    break
+                try:
+                    if event.key == quit_key and quit_key_down:
+                        exit_key_selected = True
+                        break
+                except:
+                    pass
 
         if exit_key_selected:
             break

@@ -14,18 +14,30 @@ class Enemy(Sprite):
         can_rotate,
         hitbox_width,
         path_width,
+        rotate_image,
         is_invincible,
     ):
         super().__init__(
-            name, image, center_position, speed, can_rotate, hitbox_width, path_width
+            name,
+            image,
+            center_position,
+            speed,
+            can_rotate,
+            hitbox_width,
+            path_width,
+            rotate_image,
         )
         self.is_invincible = is_invincible
+
+        # Additional attributes
+        self.path_finding = False
+        self.seen_player = False
 
     # Method to check if the enemy can move within maze
     # in the direction of a second sprite, and that a clear
     # path exists between the two. If true, returns the direction
     # to be traversed by the enemy.
-    def can_move_towards(self, second_sprite: "Sprite", maze_grid):
+    def can_see_player(self, second_sprite: "Sprite", barrier_sprites, maze_grid):
         aligned_horz = False
         aligned_vert = False
         # Check if aligned horizontally with second sprite (same y)
@@ -72,25 +84,30 @@ class Enemy(Sprite):
         # Check if temp rect resides within a clear space within maze path
         temp_rect = pygame.Rect(temp_topleft_x, temp_topleft_y, temp_width, temp_height)
         if Sprite.is_path_clear(temp_rect, maze_grid):
+            for barrier in barrier_sprites:
+                if barrier_sprites[barrier].hitbox_rect.colliderect(temp_rect):
+                    return ()
             return move_direction
         return ()
 
     # Move towards second sprite if direction possible,
     # otherwise random navigation, only backtracking if needed
-    def set_navigate_direction(self, second_sprite: "Sprite", maze_grid, game_tick):
+    def set_navigate_direction(
+        self, second_sprite: "Sprite", barrier_sprites, maze_grid, game_tick
+    ):
         # Determine how far item has traveled in the game tick
         if self.move_dist + self.speed * game_tick >= 1:
             # Possible directions: Right, Left, Up, Down
             dirs = [(1, 0), (-1, 0), (0, -1), (0, 1)]
 
             # Check if possible to move towards second sprite with clear path
-            move_direction = ()
-            aligned_second_sprite = False
-            if second_sprite:
-                move_direction = self.can_move_towards(second_sprite, maze_grid)
-            if move_direction:
-                aligned_second_sprite = True
-                self.set_desired_direction(move_direction[0], move_direction[1])
+            if second_sprite and not self.has_seen_player():
+                move_dir = self.can_see_player(
+                    second_sprite, barrier_sprites, maze_grid
+                )
+                if move_dir:
+                    self.set_desired_direction(move_dir[0], move_dir[1])
+                    self.seen_player = True
 
             # If current direction is 0, 0, choose a random direction
             if self.desired_direction == (0, 0) or not self.desired_direction:
@@ -128,7 +145,7 @@ class Enemy(Sprite):
                 self.set_desired_direction(
                     directions_to_check[3][0], directions_to_check[3][1]
                 )
-            elif aligned_second_sprite and 0 in valid_indices:
+            elif self.seen_player and 0 in valid_indices:
                 pass
             else:
                 non_reverse_dirs = [i for i in valid_indices if i != 3]
@@ -137,3 +154,29 @@ class Enemy(Sprite):
                     directions_to_check[chosen_index][0],
                     directions_to_check[chosen_index][1],
                 )
+
+    # Pathfind based on current flow field
+    def set_pathfind_direction(self, flow_field, enemy_graph_coord):
+        flow_field_direction = flow_field[enemy_graph_coord]
+        if flow_field_direction != (0, 0):
+            self.set_desired_direction(flow_field_direction[0], flow_field_direction[1])
+            self.path_finding = True
+        else:
+            self.path_finding = False
+            self.set_desired_direction(0, 1)
+
+    # Return whether the enemy is performing pathfinding using flow field
+    def is_path_finding(self):
+        return self.path_finding
+
+    # Toggle flag for whether enemy is pathfinding
+    def toggle_path_finding(self):
+        self.path_finding = not self.path_finding
+
+    # Toggle flag for whether the enemy has seen the player
+    def toggle_seen_player(self):
+        self.seen_player = not self.seen_player
+
+    # Return whether the enemy has seen the player
+    def has_seen_player(self):
+        return self.seen_player

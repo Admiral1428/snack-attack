@@ -6,7 +6,15 @@ from rect.utils import define_rect
 # Class to define a sprite and its methods
 class Sprite:
     def __init__(
-        self, name, image, center_position, speed, can_rotate, hitbox_width, path_width
+        self,
+        name,
+        image,
+        center_position,
+        speed,
+        can_rotate,
+        hitbox_width,
+        path_width,
+        rotate_image,
     ):
         self.name = name
         self.image = image
@@ -15,6 +23,7 @@ class Sprite:
         self.can_rotate = can_rotate
         self.hitbox_width = hitbox_width
         self.path_width = path_width
+        self.rotate_image = rotate_image
 
         # Additional attributes
         self.orig_image = image
@@ -129,6 +138,36 @@ class Sprite:
                     return False
         return True
 
+    # Method to check if there is line of sight within a rect
+    # (i.e., no walls spanning entire width or height of rect)
+    @staticmethod
+    def is_sightline_clear(temp_rect, maze_grid, move_direction):
+        topleft = temp_rect.topleft
+        botright = temp_rect.bottomright
+        # Check if within bounds of maze
+        if (
+            topleft[0] < 0
+            or (botright[0] - 1) > (len(maze_grid[0]) - 1)
+            or topleft[1] < 0
+            or (botright[1] - 1) > (len(maze_grid) - 1)
+        ):
+            return False
+        # If moving horizontally, check if any row has clear path
+        if move_direction[0] != 0:
+            # Check if any rows contain all 1s
+            for row in range(topleft[1], botright[1]):
+                cur_row = maze_grid[row]
+                row_subset = cur_row[topleft[0] : botright[0]]
+                if all(val == 0 for val in row_subset):
+                    return True
+        # If moving vertically, check if any column has clear path
+        elif move_direction[1] != 0:
+            for col in range(topleft[0], botright[0]):
+                cur_col = [row[col] for row in maze_grid[topleft[1] : botright[1]]]
+                if all(val == 0 for val in cur_col):
+                    return True
+        return False
+
     # Determine and perform move based on direction, move check, time, and speed
     def perform_move(self, maze_grid, game_tick):
         # Determine how far item has traveled in the game tick
@@ -194,44 +233,52 @@ class Sprite:
 
     # Define orientation based on current and previous direction
     def set_orientation(self):
-        # Moving right
-        if self.motion_vector[0] > 0:
-            self.rotation_angle = 0
-            self.mirror = False
-            self.facing = "right"
-        # Moving left
-        elif self.motion_vector[0] < 0:
-            self.rotation_angle = 0
-            self.mirror = True
-            self.facing = "left"
-        # Moving up, where previously facing right, or wheels to the right
-        elif self.motion_vector[1] < 0 and (
-            self.facing == "right" or self.facing == "wheels_right"
-        ):
-            self.rotation_angle = 90  # rotate ccw
-            self.mirror = False
-            self.facing = "wheels_right"
-        # Moving up, where previously facing left, or wheels to the left
-        elif self.motion_vector[1] < 0 and (
-            self.facing == "left" or self.facing == "wheels_left"
-        ):
-            self.rotation_angle = 90  # rotate ccw
-            self.mirror = True  # then mirror horizontally
-            self.facing = "wheels_left"
-        # Moving down, where previously facing right, or wheels to the left
-        elif self.motion_vector[1] > 0 and (
-            self.facing == "right" or self.facing == "wheels_left"
-        ):
-            self.rotation_angle = -90  # rotate cw
-            self.mirror = False
-            self.facing = "wheels_left"
-        # Moving down, where previously facing left, or wheels to the right
-        elif self.motion_vector[1] > 0 and (
-            self.facing == "left" or self.facing == "wheels_right"
-        ):
-            self.rotation_angle = -90  # rotate cw
-            self.mirror = True  # then mirror horizontally
-            self.facing = "wheels_right"
+        if self.rotate_image:
+            # Horizontal
+            if self.motion_vector[0] != 0:
+                self.image = self.orig_image
+            # Vertical
+            else:
+                self.image = self.rotate_image
+        else:
+            # Moving right
+            if self.motion_vector[0] > 0:
+                self.rotation_angle = 0
+                self.mirror = False
+                self.facing = "right"
+            # Moving left
+            elif self.motion_vector[0] < 0:
+                self.rotation_angle = 0
+                self.mirror = True
+                self.facing = "left"
+            # Moving up, where previously facing right, or wheels to the right
+            elif self.motion_vector[1] < 0 and (
+                self.facing == "right" or self.facing == "wheels_right"
+            ):
+                self.rotation_angle = 90  # rotate ccw
+                self.mirror = False
+                self.facing = "wheels_right"
+            # Moving up, where previously facing left, or wheels to the left
+            elif self.motion_vector[1] < 0 and (
+                self.facing == "left" or self.facing == "wheels_left"
+            ):
+                self.rotation_angle = 90  # rotate ccw
+                self.mirror = True  # then mirror horizontally
+                self.facing = "wheels_left"
+            # Moving down, where previously facing right, or wheels to the left
+            elif self.motion_vector[1] > 0 and (
+                self.facing == "right" or self.facing == "wheels_left"
+            ):
+                self.rotation_angle = -90  # rotate cw
+                self.mirror = False
+                self.facing = "wheels_left"
+            # Moving down, where previously facing left, or wheels to the right
+            elif self.motion_vector[1] > 0 and (
+                self.facing == "left" or self.facing == "wheels_right"
+            ):
+                self.rotation_angle = -90  # rotate cw
+                self.mirror = True  # then mirror horizontally
+                self.facing = "wheels_right"
 
     # Method to draw onto screen at its position, with screen offsets as needed
     def draw(self, draw_image_x, draw_image_y, image_boundary, maze_factor):
@@ -336,3 +383,19 @@ class Sprite:
     # Increment animation start time
     def increment_animation_start_time(self, increment):
         self.animation_start_time += increment
+
+    # Return proximity to second sprite
+    def get_proximity(self, second_sprite: "Sprite"):
+        dx = self.get_center_position()[0] - second_sprite.get_center_position()[0]
+        dy = self.get_center_position()[1] - second_sprite.get_center_position()[1]
+        return abs(dx) + abs(dy)
+
+    # Return proximity to second sprite in components
+    def get_proximity_dx_dy(self, second_sprite: "Sprite"):
+        dx = self.get_center_position()[0] - second_sprite.get_center_position()[0]
+        dy = self.get_center_position()[1] - second_sprite.get_center_position()[1]
+        return dx, dy
+
+    # Return path width
+    def get_path_width(self):
+        return self.path_width

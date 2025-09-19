@@ -114,7 +114,7 @@ def load_resources():
             ),
         )
         # Make teal the transparent color
-        images[image].set_colorkey(cfg.COLORS["teal"])
+        images[image].set_colorkey(cfg.COLORS["replace_teal"])
 
     # Get sound effects
     sounds = import_sound_dir(cfg.DIRS["sounds"])

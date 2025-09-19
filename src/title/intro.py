@@ -274,6 +274,7 @@ def run_title_screen(
                 pixels_per_second,
                 int(block_width / (maze_factor * 2)),
                 int(block_width / maze_factor),
+                None,
                 False,
             )
             tomatoes = init_enemies(
@@ -284,6 +285,7 @@ def run_title_screen(
                 pixels_per_second,
                 int(block_width / (maze_factor * 2)),
                 int(block_width / maze_factor),
+                None,
                 False,
             )
             pumpkins = init_enemies(
@@ -294,6 +296,7 @@ def run_title_screen(
                 pixels_per_second,
                 int(block_width / (maze_factor * 2)),
                 int(block_width / maze_factor),
+                None,
                 True,
             )
 
@@ -326,8 +329,18 @@ def run_title_screen(
             active_enemies = [enemy for enemy in alive_enemies if enemy.can_spawn()]
 
             # Move player, projectiles, and enemies
-            flags = move_sprites(
-                None, None, active_enemies, flags, maze_grid, game_tick
+            flags, _ = move_sprites(
+                None,
+                None,
+                active_enemies,
+                flags,
+                maze_grid,
+                game_tick,
+                None,
+                None,
+                None,
+                None,
+                [],
             )
 
             # Draw item and enemy sprites

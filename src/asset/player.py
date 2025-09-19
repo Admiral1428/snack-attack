@@ -5,10 +5,10 @@ from asset.sprite import Sprite
 # Class to define a sprite and its methods
 class Player(Sprite):
     def __init__(
-        self, name, image, center_position, speed, can_rotate, hitbox_width, path_width
+        self, name, image, center_position, speed, can_rotate, hitbox_width, path_width, rotate_image
     ):
         super().__init__(
-            name, image, center_position, speed, can_rotate, hitbox_width, path_width
+            name, image, center_position, speed, can_rotate, hitbox_width, path_width, rotate_image
         )
 
     # Assign direction based on user input

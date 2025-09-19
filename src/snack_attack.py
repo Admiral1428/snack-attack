@@ -1,5 +1,6 @@
 import ast
 import pygame
+import time
 from settings import config as cfg
 from title.intro import run_title_screen
 from rect.draw import draw_maze
@@ -31,6 +32,7 @@ from game.play import (
     end_game,
     pause_game,
 )
+from path.pathfind import create_graph
 
 # Initialize pygame, screen, and starting variables
 (
@@ -59,6 +61,7 @@ flags = Flags()
 while flags.running:
     # Show game intro screen
     if flags.game_intro:
+        flags = Flags()
         flags.running = run_title_screen(
             flags,
             fonts,
@@ -148,6 +151,12 @@ while flags.running:
             maze_width, maze_height, block_width, maze_factor, maze_path
         )
 
+        # Create maze graph using chosen coordinates
+        maze_graph, maze_graph_coords = create_graph(
+            maze_path, cfg.SCALE_FACTOR, cfg.BLOCK_WIDTH
+        )
+        flow_field = None
+
         # Save subsurface for game loop re-draw
         rect_area = pygame.Rect(0, 0, cfg.WIDTH, cfg.HEIGHT)
         temp_surf = screen.subsurface(rect_area)
@@ -167,51 +176,84 @@ while flags.running:
         flags, level_index = set_maze_flags(next_level_key, flags, levels, level_index)
         pause_delta = 0
 
+        # Colorize images based on sprite_colors.csv
+        sprite_metadata = {}
+        try:
+            sprite_metadata = read_csv_dict(levels[level_index].get("sprite_colors"))[0]
+        except:
+            sprite_metadata["first_color"] = "blue"
+            sprite_metadata["second_color"] = "red"
+
+        colorized_images = {}
+        for image in images:
+            image_copy = images[image].copy()
+            pixel_array = pygame.PixelArray(image_copy)
+            pixel_array.replace(cfg.COLORS["blue"], cfg.COLORS["replace_blue"])
+            pixel_array.replace(cfg.COLORS["red"], cfg.COLORS["replace_red"])
+            pixel_array.replace(
+                cfg.COLORS["replace_blue"], cfg.COLORS[sprite_metadata["first_color"]]
+            )
+            pixel_array.replace(
+                cfg.COLORS["replace_red"], cfg.COLORS[sprite_metadata["second_color"]]
+            )
+            del pixel_array
+            colorized_images[image] = image_copy
+
     # Create Sprite objects
     elif flags.create_sprites:
         # Initialize items
-        items = init_items(asset_coord, images, block_width, maze_factor)
+        items = init_items(asset_coord, colorized_images, block_width, maze_factor)
+        barrier_sprites = {}
+
+        # Determine barrier items for sightline checks
+        if items:
+            for key, value in items.items():
+                barrier_sprites[key] = value
 
         # Initialize player
         player = Player(
             "player",
-            images["combine"],
+            colorized_images["combine"],
             asset_coord.get("S"),
             pixels_per_second,
             True,
             int(block_width / (maze_factor * 2)),
             int(block_width / maze_factor),
+            None,
         )
 
         # Initialize enemies
         corns = init_enemies(
             "corn",
             num_corn,
-            images[cfg.IMAGE_SERIES["corn"][0]],
+            colorized_images[cfg.IMAGE_SERIES["corn"][0]],
             asset_coord.get("E"),
             pixels_per_second,
-            int((3 / 4) * block_width / maze_factor),
+            int(0.9 * block_width / maze_factor),
             int(block_width / maze_factor),
+            None,
             False,
         )
         tomatoes = init_enemies(
             "tomato",
             num_tomato,
-            images[cfg.IMAGE_SERIES["tomato"][0]],
+            colorized_images[cfg.IMAGE_SERIES["tomato"][0]],
             asset_coord.get("E"),
             pixels_per_second,
-            int((3 / 4) * block_width / maze_factor),
+            int(0.9 * block_width / maze_factor),
             int(block_width / maze_factor),
+            None,
             False,
         )
         pumpkins = init_enemies(
             "pumpkin",
             num_pumpkin,
-            images[cfg.IMAGE_SERIES["pumpkin"][0]],
+            colorized_images[cfg.IMAGE_SERIES["pumpkin"][0]],
             asset_coord.get("E"),
             pixels_per_second,
-            int((3 / 4) * block_width / maze_factor),
+            int(0.9 * block_width / maze_factor),
             int(block_width / maze_factor),
+            None,
             True,
         )
 
@@ -229,7 +271,7 @@ while flags.running:
         alive_pumpkins = [pumpkin for pumpkin in pumpkins if not pumpkin.is_destroyed()]
 
         if player.can_spawn():
-            start_time, spawned_enemies, projectile, blast = reset_actors(
+            start_time, spawned_enemies, projectile, blast, flow_field = reset_actors(
                 flags, player, alive_corns, alive_tomatoes, alive_pumpkins, asset_coord
             )
 
@@ -255,15 +297,26 @@ while flags.running:
                 player,
                 block_width,
                 maze_factor,
-                images,
+                colorized_images,
                 sounds,
                 pixels_per_second,
+                None,
             )
 
         # Move player, projectiles, and enemies
         if not flags.exit_found:
-            flags = move_sprites(
-                player, projectile, active_enemies, flags, maze_grid, game_tick
+            flags, flow_field = move_sprites(
+                player,
+                projectile,
+                active_enemies,
+                flags,
+                maze_grid,
+                game_tick,
+                maze_graph,
+                maze_graph_coords,
+                maze_factor,
+                flow_field,
+                barrier_sprites,
             )
         else:
             # If player not coincident with exit and moving towards it,
@@ -283,7 +336,13 @@ while flags.running:
         if projectile and (projectile.is_destroyed() or projectile.is_stopped()):
             # Initialize_blast
             projectile, blast, flags = init_blast(
-                projectile, sounds, flags, images, block_width, maze_factor
+                projectile,
+                sounds,
+                flags,
+                colorized_images,
+                block_width,
+                maze_factor,
+                None,
             )
         elif blast and not blast.is_animating():
             # Remove blasts which have finished animating
@@ -292,13 +351,17 @@ while flags.running:
 
         # Detect enemy collision with player and projectile
         for enemy in active_enemies:
+            if flags.exit_created:
+                exit_sprite = exit
+            else:
+                exit_sprite = None
             lives, score, spawned_enemies, start_time, flags = check_enemy_collision(
                 enemy,
                 player,
                 projectile,
                 flags,
                 sounds,
-                images,
+                colorized_images,
                 spawned_enemies,
                 seconds_to_spawn,
                 score,
@@ -309,8 +372,8 @@ while flags.running:
         all_enemies = corns + tomatoes + pumpkins
         if not player.can_spawn():
             # Remove items if appropriate
-            items, flags, score, all_destroyed = remove_items(
-                all_enemies, flags, items, player, score, sounds
+            items, flags, score, all_destroyed, barrier_sprites = remove_items(
+                all_enemies, flags, items, player, score, sounds, barrier_sprites
             )
 
             # If no more items, draw exit
@@ -320,14 +383,24 @@ while flags.running:
                     all_destroyed,
                     sounds,
                     lives,
-                    images,
+                    colorized_images,
                     asset_coord,
                     block_width,
                     maze_factor,
+                    None,
                 )
 
         # Draw exit and animate
         if flags.exit_created:
+            if "exit" not in barrier_sprites:
+                enemy_collide_exit = False
+                for enemy in all_enemies:
+                    if enemy.collide_check(exit):
+                        enemy_collide_exit = True
+                        break
+                if not enemy_collide_exit:
+                    barrier_sprites["exit"] = exit
+
             sprite_image_data.append(
                 exit.draw(
                     cfg.DRAW_IMAGE_X, cfg.DRAW_IMAGE_Y, image_boundary, maze_factor
@@ -335,7 +408,7 @@ while flags.running:
             )
             # Proceed to next level if collision with exit
             if player.collide_check(exit):
-                flags = animate_exit(flags, exit, images)
+                flags = animate_exit(flags, exit, colorized_images)
         else:
             exit = None
 
